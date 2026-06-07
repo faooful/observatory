@@ -1,0 +1,47 @@
+[
+  {
+    "id": "lumbridge",
+    "label": "Lumbridge",
+    "type": "city",
+    "x": 3222,
+    "y": 3218,
+    "plane": 0,
+    "description": "Starting area and early account hub."
+  },
+  {
+    "id": "varrock",
+    "label": "Varrock",
+    "type": "city",
+    "x": 3210,
+    "y": 3424,
+    "plane": 0,
+    "description": "Major city hub with quests, shops, and Grand Exchange access."
+  },
+  {
+    "id": "grand-exchange",
+    "label": "Grand Exchange",
+    "type": "city",
+    "x": 3164,
+    "y": 3485,
+    "plane": 0,
+    "description": "Primary trading hub."
+  },
+  {
+    "id": "draynor",
+    "label": "Draynor Village",
+    "type": "city",
+    "x": 3093,
+    "y": 3244,
+    "plane": 0,
+    "description": "Early skilling and quest hub."
+  },
+  {
+    "id": "al-kharid",
+    "label": "Al Kharid",
+    "type": "city",
+    "x": 3293,
+    "y": 3174,
+    "plane": 0,
+    "description": "Desert gateway and early combat/skilling area."
+  }
+]
