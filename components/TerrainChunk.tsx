@@ -1,15 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { BufferAttribute, BufferGeometry } from "three";
+import { BufferAttribute, BufferGeometry, DoubleSide } from "three";
 import { buildTerrainMesh } from "@/lib/terrain/buildMesh";
 import type { LoadedTerrainChunk } from "@/lib/terrain/loadTerrain";
 
 type TerrainChunkProps = {
   terrain: LoadedTerrainChunk;
+  visible?: boolean;
 };
 
-export function TerrainChunk({ terrain }: TerrainChunkProps) {
+export function TerrainChunk({ terrain, visible = true }: TerrainChunkProps) {
   const geometry = useMemo(() => {
     const mesh = buildTerrainMesh(terrain);
     const nextGeometry = new BufferGeometry();
@@ -21,9 +22,9 @@ export function TerrainChunk({ terrain }: TerrainChunkProps) {
   }, [terrain]);
 
   return (
-    <group>
+    <group visible={visible}>
       <mesh geometry={geometry} receiveShadow>
-        <meshStandardMaterial vertexColors roughness={0.92} metalness={0.04} />
+        <meshBasicMaterial vertexColors side={DoubleSide} />
       </mesh>
       <mesh geometry={geometry}>
         <meshBasicMaterial color="#d8f1ea" wireframe transparent opacity={0.085} />

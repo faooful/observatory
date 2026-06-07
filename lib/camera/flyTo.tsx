@@ -2,7 +2,7 @@
 
 import { OrbitControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { MathUtils, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useMapStore } from "@/lib/store/useMapStore";
@@ -15,7 +15,6 @@ type CameraRigProps = {
   terrain: LoadedTerrainChunk;
 };
 
-const initialPosition = new Vector3(20, 56, 92);
 const initialTarget = new Vector3(0, 0, 0);
 
 export function CameraRig({ bounds, pins, terrain }: CameraRigProps) {
@@ -23,6 +22,10 @@ export function CameraRig({ bounds, pins, terrain }: CameraRigProps) {
   const controls = useRef<OrbitControlsImpl>(null);
   const selectedPinId = useMapStore((state) => state.selectedPinId);
   const viewVersion = useMapStore((state) => state.viewVersion);
+  const initialPosition = useMemo(() => {
+    const radius = Math.max(bounds.width, bounds.depth);
+    return new Vector3(radius * 0.2, radius * 0.65, radius * 0.78);
+  }, [bounds.depth, bounds.width]);
   const destination = useRef({
     position: initialPosition.clone(),
     target: initialTarget.clone()
@@ -47,12 +50,16 @@ export function CameraRig({ bounds, pins, terrain }: CameraRigProps) {
     };
   }, [selectedPin, terrain, viewVersion]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    camera.position.copy(initialPosition);
+    camera.lookAt(initialTarget);
+    controls.current?.target.copy(initialTarget);
+    controls.current?.update();
     destination.current = {
       position: initialPosition.clone(),
       target: initialTarget.clone()
     };
-  }, [viewVersion]);
+  }, [camera, initialPosition, viewVersion]);
 
   useFrame((_, delta) => {
     const easing = 1 - Math.exp(-delta * 2.8);
@@ -67,9 +74,10 @@ export function CameraRig({ bounds, pins, terrain }: CameraRigProps) {
   return (
     <OrbitControls
       ref={controls}
+      makeDefault
       enableDamping
       dampingFactor={0.08}
-      maxDistance={Math.max(bounds.width, bounds.depth) * 1.4}
+      maxDistance={Math.max(bounds.width, bounds.depth) * 1.7}
       minDistance={24}
       maxPolarAngle={MathUtils.degToRad(78)}
     />

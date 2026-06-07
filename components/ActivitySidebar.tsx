@@ -63,7 +63,7 @@ export function ActivitySidebar() {
         </div>
       </section>
 
-      <p className="empty-state">Mock terrain follows the final chunk schema, ready for cache-derived heights later.</p>
+      <p className="empty-state">Surface map tiles are sourced from the OSRS Wiki map while cache-derived terrain is wired in.</p>
     </aside>
   );
 }
