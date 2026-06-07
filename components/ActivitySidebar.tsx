@@ -63,7 +63,7 @@ export function ActivitySidebar() {
         </div>
       </section>
 
-      <p className="empty-state">Surface map tiles are sourced from the OSRS Wiki map while cache-derived terrain is wired in.</p>
+      <p className="empty-state">Zoom from a cache-textured globe into streamed scene chunks.</p>
     </aside>
   );
 }

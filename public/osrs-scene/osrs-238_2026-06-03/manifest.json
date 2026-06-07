@@ -1,0 +1,696 @@
+{
+  "cacheName": "osrs-238_2026-06-03",
+  "cacheId": 2565,
+  "revision": 238,
+  "bounds": {
+    "minX": 3072,
+    "maxX": 3456,
+    "minY": 2752,
+    "maxY": 3264
+  },
+  "overview": {
+    "globeTexture": "overview/globe/0/0_0.png",
+    "planeTexture": "overview/plane/0/0_0.png"
+  },
+  "texturePyramid": {
+    "atlas": "overview/atlas.png",
+    "tileSize": 256,
+    "columns": 6,
+    "rows": 8,
+    "levels": [
+      {
+        "id": "globe-0",
+        "kind": "globe",
+        "tiles": [
+          "overview/globe/0/0_0.png"
+        ]
+      },
+      {
+        "id": "plane-0",
+        "kind": "plane",
+        "tiles": [
+          "overview/plane/0/0_0.png"
+        ]
+      },
+      {
+        "id": "plane-1",
+        "kind": "plane",
+        "tiles": [
+          "overview/plane/1/0_0.png",
+          "overview/plane/1/1_0.png",
+          "overview/plane/1/0_1.png",
+          "overview/plane/1/1_1.png"
+        ]
+      }
+    ]
+  },
+  "projection": {
+    "type": "globe-to-plane",
+    "radius": 245.76,
+    "worldWidth": 384,
+    "worldDepth": 512
+  },
+  "validMapSquares": [
+    {
+      "mapX": 48,
+      "mapY": 43
+    },
+    {
+      "mapX": 49,
+      "mapY": 43
+    },
+    {
+      "mapX": 50,
+      "mapY": 43
+    },
+    {
+      "mapX": 51,
+      "mapY": 43
+    },
+    {
+      "mapX": 52,
+      "mapY": 43
+    },
+    {
+      "mapX": 53,
+      "mapY": 43
+    },
+    {
+      "mapX": 48,
+      "mapY": 44
+    },
+    {
+      "mapX": 49,
+      "mapY": 44
+    },
+    {
+      "mapX": 50,
+      "mapY": 44
+    },
+    {
+      "mapX": 51,
+      "mapY": 44
+    },
+    {
+      "mapX": 52,
+      "mapY": 44
+    },
+    {
+      "mapX": 53,
+      "mapY": 44
+    },
+    {
+      "mapX": 48,
+      "mapY": 45
+    },
+    {
+      "mapX": 49,
+      "mapY": 45
+    },
+    {
+      "mapX": 50,
+      "mapY": 45
+    },
+    {
+      "mapX": 51,
+      "mapY": 45
+    },
+    {
+      "mapX": 52,
+      "mapY": 45
+    },
+    {
+      "mapX": 53,
+      "mapY": 45
+    },
+    {
+      "mapX": 48,
+      "mapY": 46
+    },
+    {
+      "mapX": 49,
+      "mapY": 46
+    },
+    {
+      "mapX": 50,
+      "mapY": 46
+    },
+    {
+      "mapX": 51,
+      "mapY": 46
+    },
+    {
+      "mapX": 52,
+      "mapY": 46
+    },
+    {
+      "mapX": 53,
+      "mapY": 46
+    },
+    {
+      "mapX": 48,
+      "mapY": 47
+    },
+    {
+      "mapX": 49,
+      "mapY": 47
+    },
+    {
+      "mapX": 50,
+      "mapY": 47
+    },
+    {
+      "mapX": 51,
+      "mapY": 47
+    },
+    {
+      "mapX": 52,
+      "mapY": 47
+    },
+    {
+      "mapX": 53,
+      "mapY": 47
+    },
+    {
+      "mapX": 48,
+      "mapY": 48
+    },
+    {
+      "mapX": 49,
+      "mapY": 48
+    },
+    {
+      "mapX": 50,
+      "mapY": 48
+    },
+    {
+      "mapX": 51,
+      "mapY": 48
+    },
+    {
+      "mapX": 52,
+      "mapY": 48
+    },
+    {
+      "mapX": 53,
+      "mapY": 48
+    },
+    {
+      "mapX": 48,
+      "mapY": 49
+    },
+    {
+      "mapX": 49,
+      "mapY": 49
+    },
+    {
+      "mapX": 50,
+      "mapY": 49
+    },
+    {
+      "mapX": 51,
+      "mapY": 49
+    },
+    {
+      "mapX": 52,
+      "mapY": 49
+    },
+    {
+      "mapX": 53,
+      "mapY": 49
+    },
+    {
+      "mapX": 48,
+      "mapY": 50
+    },
+    {
+      "mapX": 49,
+      "mapY": 50
+    },
+    {
+      "mapX": 50,
+      "mapY": 50
+    },
+    {
+      "mapX": 51,
+      "mapY": 50
+    },
+    {
+      "mapX": 52,
+      "mapY": 50
+    },
+    {
+      "mapX": 53,
+      "mapY": 50
+    }
+  ],
+  "lod": {
+    "globeDistance": 1650,
+    "planeDistance": 1280,
+    "closeDistance": 520,
+    "closeChunkRadius": 2
+  },
+  "defaultCamera": {
+    "x": 3244.43,
+    "y": 26,
+    "z": 2901.82,
+    "pitch": -171,
+    "yaw": 856,
+    "projection": "orthographic",
+    "zoom": 18
+  },
+  "chunks": [
+    {
+      "mapX": 48,
+      "mapY": 43,
+      "vertexCount": 129379,
+      "indexCount": 487749,
+      "positions": "chunks/48_43.positions.bin",
+      "colors": "chunks/48_43.colors.bin",
+      "indices": "chunks/48_43.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 44,
+      "vertexCount": 155804,
+      "indexCount": 512700,
+      "positions": "chunks/48_44.positions.bin",
+      "colors": "chunks/48_44.colors.bin",
+      "indices": "chunks/48_44.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 45,
+      "vertexCount": 75267,
+      "indexCount": 295554,
+      "positions": "chunks/48_45.positions.bin",
+      "colors": "chunks/48_45.colors.bin",
+      "indices": "chunks/48_45.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 46,
+      "vertexCount": 105050,
+      "indexCount": 407817,
+      "positions": "chunks/48_46.positions.bin",
+      "colors": "chunks/48_46.colors.bin",
+      "indices": "chunks/48_46.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 47,
+      "vertexCount": 318504,
+      "indexCount": 1241418,
+      "positions": "chunks/48_47.positions.bin",
+      "colors": "chunks/48_47.colors.bin",
+      "indices": "chunks/48_47.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 48,
+      "vertexCount": 225262,
+      "indexCount": 677139,
+      "positions": "chunks/48_48.positions.bin",
+      "colors": "chunks/48_48.colors.bin",
+      "indices": "chunks/48_48.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 49,
+      "vertexCount": 168522,
+      "indexCount": 412365,
+      "positions": "chunks/48_49.positions.bin",
+      "colors": "chunks/48_49.colors.bin",
+      "indices": "chunks/48_49.indices.bin"
+    },
+    {
+      "mapX": 48,
+      "mapY": 50,
+      "vertexCount": 191327,
+      "indexCount": 563295,
+      "positions": "chunks/48_50.positions.bin",
+      "colors": "chunks/48_50.colors.bin",
+      "indices": "chunks/48_50.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 43,
+      "vertexCount": 255053,
+      "indexCount": 731904,
+      "positions": "chunks/49_43.positions.bin",
+      "colors": "chunks/49_43.colors.bin",
+      "indices": "chunks/49_43.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 44,
+      "vertexCount": 259215,
+      "indexCount": 852651,
+      "positions": "chunks/49_44.positions.bin",
+      "colors": "chunks/49_44.colors.bin",
+      "indices": "chunks/49_44.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 45,
+      "vertexCount": 169563,
+      "indexCount": 565848,
+      "positions": "chunks/49_45.positions.bin",
+      "colors": "chunks/49_45.colors.bin",
+      "indices": "chunks/49_45.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 46,
+      "vertexCount": 49528,
+      "indexCount": 126330,
+      "positions": "chunks/49_46.positions.bin",
+      "colors": "chunks/49_46.colors.bin",
+      "indices": "chunks/49_46.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 47,
+      "vertexCount": 41258,
+      "indexCount": 99714,
+      "positions": "chunks/49_47.positions.bin",
+      "colors": "chunks/49_47.colors.bin",
+      "indices": "chunks/49_47.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 48,
+      "vertexCount": 125066,
+      "indexCount": 407979,
+      "positions": "chunks/49_48.positions.bin",
+      "colors": "chunks/49_48.colors.bin",
+      "indices": "chunks/49_48.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 49,
+      "vertexCount": 174262,
+      "indexCount": 565464,
+      "positions": "chunks/49_49.positions.bin",
+      "colors": "chunks/49_49.colors.bin",
+      "indices": "chunks/49_49.indices.bin"
+    },
+    {
+      "mapX": 49,
+      "mapY": 50,
+      "vertexCount": 243156,
+      "indexCount": 708069,
+      "positions": "chunks/49_50.positions.bin",
+      "colors": "chunks/49_50.colors.bin",
+      "indices": "chunks/49_50.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 43,
+      "vertexCount": 230981,
+      "indexCount": 582105,
+      "positions": "chunks/50_43.positions.bin",
+      "colors": "chunks/50_43.colors.bin",
+      "indices": "chunks/50_43.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 44,
+      "vertexCount": 38664,
+      "indexCount": 84159,
+      "positions": "chunks/50_44.positions.bin",
+      "colors": "chunks/50_44.colors.bin",
+      "indices": "chunks/50_44.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 45,
+      "vertexCount": 68419,
+      "indexCount": 134994,
+      "positions": "chunks/50_45.positions.bin",
+      "colors": "chunks/50_45.colors.bin",
+      "indices": "chunks/50_45.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 46,
+      "vertexCount": 42026,
+      "indexCount": 116085,
+      "positions": "chunks/50_46.positions.bin",
+      "colors": "chunks/50_46.colors.bin",
+      "indices": "chunks/50_46.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 47,
+      "vertexCount": 40650,
+      "indexCount": 124437,
+      "positions": "chunks/50_47.positions.bin",
+      "colors": "chunks/50_47.colors.bin",
+      "indices": "chunks/50_47.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 48,
+      "vertexCount": 52599,
+      "indexCount": 149406,
+      "positions": "chunks/50_48.positions.bin",
+      "colors": "chunks/50_48.colors.bin",
+      "indices": "chunks/50_48.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 49,
+      "vertexCount": 158983,
+      "indexCount": 480294,
+      "positions": "chunks/50_49.positions.bin",
+      "colors": "chunks/50_49.colors.bin",
+      "indices": "chunks/50_49.indices.bin"
+    },
+    {
+      "mapX": 50,
+      "mapY": 50,
+      "vertexCount": 254470,
+      "indexCount": 867144,
+      "positions": "chunks/50_50.positions.bin",
+      "colors": "chunks/50_50.colors.bin",
+      "indices": "chunks/50_50.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 43,
+      "vertexCount": 305390,
+      "indexCount": 763341,
+      "positions": "chunks/51_43.positions.bin",
+      "colors": "chunks/51_43.colors.bin",
+      "indices": "chunks/51_43.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 44,
+      "vertexCount": 47018,
+      "indexCount": 127227,
+      "positions": "chunks/51_44.positions.bin",
+      "colors": "chunks/51_44.colors.bin",
+      "indices": "chunks/51_44.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 45,
+      "vertexCount": 39856,
+      "indexCount": 93129,
+      "positions": "chunks/51_45.positions.bin",
+      "colors": "chunks/51_45.colors.bin",
+      "indices": "chunks/51_45.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 46,
+      "vertexCount": 22887,
+      "indexCount": 44328,
+      "positions": "chunks/51_46.positions.bin",
+      "colors": "chunks/51_46.colors.bin",
+      "indices": "chunks/51_46.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 47,
+      "vertexCount": 56815,
+      "indexCount": 159561,
+      "positions": "chunks/51_47.positions.bin",
+      "colors": "chunks/51_47.colors.bin",
+      "indices": "chunks/51_47.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 48,
+      "vertexCount": 38708,
+      "indexCount": 102405,
+      "positions": "chunks/51_48.positions.bin",
+      "colors": "chunks/51_48.colors.bin",
+      "indices": "chunks/51_48.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 49,
+      "vertexCount": 134782,
+      "indexCount": 414993,
+      "positions": "chunks/51_49.positions.bin",
+      "colors": "chunks/51_49.colors.bin",
+      "indices": "chunks/51_49.indices.bin"
+    },
+    {
+      "mapX": 51,
+      "mapY": 50,
+      "vertexCount": 89687,
+      "indexCount": 250659,
+      "positions": "chunks/51_50.positions.bin",
+      "colors": "chunks/51_50.colors.bin",
+      "indices": "chunks/51_50.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 43,
+      "vertexCount": 451850,
+      "indexCount": 1241532,
+      "positions": "chunks/52_43.positions.bin",
+      "colors": "chunks/52_43.colors.bin",
+      "indices": "chunks/52_43.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 44,
+      "vertexCount": 93466,
+      "indexCount": 282870,
+      "positions": "chunks/52_44.positions.bin",
+      "colors": "chunks/52_44.colors.bin",
+      "indices": "chunks/52_44.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 45,
+      "vertexCount": 28351,
+      "indexCount": 60813,
+      "positions": "chunks/52_45.positions.bin",
+      "colors": "chunks/52_45.colors.bin",
+      "indices": "chunks/52_45.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 46,
+      "vertexCount": 109373,
+      "indexCount": 345393,
+      "positions": "chunks/52_46.positions.bin",
+      "colors": "chunks/52_46.colors.bin",
+      "indices": "chunks/52_46.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 47,
+      "vertexCount": 19942,
+      "indexCount": 39078,
+      "positions": "chunks/52_47.positions.bin",
+      "colors": "chunks/52_47.colors.bin",
+      "indices": "chunks/52_47.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 48,
+      "vertexCount": 40724,
+      "indexCount": 101850,
+      "positions": "chunks/52_48.positions.bin",
+      "colors": "chunks/52_48.colors.bin",
+      "indices": "chunks/52_48.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 49,
+      "vertexCount": 194180,
+      "indexCount": 583308,
+      "positions": "chunks/52_49.positions.bin",
+      "colors": "chunks/52_49.colors.bin",
+      "indices": "chunks/52_49.indices.bin"
+    },
+    {
+      "mapX": 52,
+      "mapY": 50,
+      "vertexCount": 433623,
+      "indexCount": 1493751,
+      "positions": "chunks/52_50.positions.bin",
+      "colors": "chunks/52_50.colors.bin",
+      "indices": "chunks/52_50.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 43,
+      "vertexCount": 395920,
+      "indexCount": 1418523,
+      "positions": "chunks/53_43.positions.bin",
+      "colors": "chunks/53_43.colors.bin",
+      "indices": "chunks/53_43.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 44,
+      "vertexCount": 642831,
+      "indexCount": 1688562,
+      "positions": "chunks/53_44.positions.bin",
+      "colors": "chunks/53_44.colors.bin",
+      "indices": "chunks/53_44.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 45,
+      "vertexCount": 201999,
+      "indexCount": 498738,
+      "positions": "chunks/53_45.positions.bin",
+      "colors": "chunks/53_45.colors.bin",
+      "indices": "chunks/53_45.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 46,
+      "vertexCount": 20970,
+      "indexCount": 37977,
+      "positions": "chunks/53_46.positions.bin",
+      "colors": "chunks/53_46.colors.bin",
+      "indices": "chunks/53_46.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 47,
+      "vertexCount": 25975,
+      "indexCount": 59265,
+      "positions": "chunks/53_47.positions.bin",
+      "colors": "chunks/53_47.colors.bin",
+      "indices": "chunks/53_47.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 48,
+      "vertexCount": 28674,
+      "indexCount": 64362,
+      "positions": "chunks/53_48.positions.bin",
+      "colors": "chunks/53_48.colors.bin",
+      "indices": "chunks/53_48.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 49,
+      "vertexCount": 177830,
+      "indexCount": 829419,
+      "positions": "chunks/53_49.positions.bin",
+      "colors": "chunks/53_49.colors.bin",
+      "indices": "chunks/53_49.indices.bin"
+    },
+    {
+      "mapX": 53,
+      "mapY": 50,
+      "vertexCount": 137396,
+      "indexCount": 462423,
+      "positions": "chunks/53_50.positions.bin",
+      "colors": "chunks/53_50.colors.bin",
+      "indices": "chunks/53_50.indices.bin"
+    }
+  ]
+}
