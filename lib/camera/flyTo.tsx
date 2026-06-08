@@ -15,6 +15,20 @@ type CameraRigProps = {
   defaultTarget?: [number, number, number];
 };
 
+type CameraPhase = "globe" | "transition" | "local";
+
+function getCameraPhase(distance: number, radius: number): CameraPhase {
+  if (distance >= radius * 2.45) {
+    return "globe";
+  }
+
+  if (distance >= radius * 0.42) {
+    return "transition";
+  }
+
+  return "local";
+}
+
 export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRigProps) {
   const camera = useThree((state) => state.camera);
   const controls = useRef<OrbitControlsImpl>(null);
@@ -22,11 +36,10 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
   const viewVersion = useMapStore((state) => state.viewVersion);
   const initialTarget = useMemo(() => new Vector3(...defaultTarget), [defaultTarget]);
   const normalizedMapOffset = useRef(new Vector3());
-  const worldViewDistance = Math.max(bounds.width, bounds.depth) * 2.5;
+  const activeRadius = Math.max(bounds.width, bounds.depth);
   const initialPosition = useMemo(() => {
-    const radius = Math.max(bounds.width, bounds.depth);
-    return initialTarget.clone().add(new Vector3(radius * 0.62, radius * 2.35, radius * 1.68));
-  }, [bounds.depth, bounds.width, initialTarget]);
+    return initialTarget.clone().add(new Vector3(activeRadius * 0.62, activeRadius * 1.18, activeRadius * 2.55));
+  }, [activeRadius, initialTarget]);
   const destination = useRef({
     position: initialPosition.clone(),
     target: initialTarget.clone()
@@ -51,7 +64,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
       -(selectedPin.y - bounds.centerY)
     );
     destination.current = {
-      position: target.clone().add(new Vector3(52, 186, 108)),
+      position: target.clone().add(new Vector3(0, 186, 96)),
       target
     };
     isFlying.current = true;
@@ -72,21 +85,28 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
   useFrame((_, delta) => {
     if (controls.current) {
       const distance = camera.position.distanceTo(controls.current.target);
-      const isWorldView = distance >= worldViewDistance;
-      const mapViewBlend = 1 - MathUtils.smoothstep(distance, worldViewDistance * 0.82, worldViewDistance);
-      controls.current.enableRotate = isWorldView;
-      controls.current.enablePan = !isWorldView;
-      controls.current.mouseButtons.LEFT = isWorldView ? MOUSE.ROTATE : MOUSE.PAN;
+      const phase = getCameraPhase(distance, activeRadius);
+      const mapViewBlend = 1 - MathUtils.smoothstep(distance, activeRadius * 0.42, activeRadius * 2.15);
+      const localBlend = 1 - MathUtils.smoothstep(distance, activeRadius * 0.26, activeRadius * 0.72);
+      const isGlobe = phase === "globe";
+      controls.current.enableRotate = phase !== "local";
+      controls.current.enablePan = !isGlobe;
+      controls.current.mouseButtons.LEFT = isGlobe ? MOUSE.ROTATE : MOUSE.PAN;
       controls.current.mouseButtons.RIGHT = MOUSE.PAN;
-      controls.current.touches.ONE = isWorldView ? TOUCH.ROTATE : TOUCH.PAN;
+      controls.current.touches.ONE = isGlobe ? TOUCH.ROTATE : TOUCH.PAN;
       controls.current.touches.TWO = TOUCH.DOLLY_PAN;
-      controls.current.minPolarAngle = isWorldView ? MathUtils.degToRad(18) : 0;
-      controls.current.maxPolarAngle = isWorldView ? MathUtils.degToRad(162) : MathUtils.degToRad(82);
+      controls.current.minPolarAngle = MathUtils.degToRad(MathUtils.lerp(18, 0, mapViewBlend));
+      controls.current.maxPolarAngle = MathUtils.degToRad(MathUtils.lerp(162, 74, mapViewBlend));
 
-      if (!isWorldView && !isFlying.current && mapViewBlend > 0) {
+      if (!isGlobe && !isFlying.current && mapViewBlend > 0) {
         const target = controls.current.target;
-        const desiredPosition = normalizedMapOffset.current.set(0, distance * 0.86, distance * 0.5).add(target);
-        const easing = (1 - Math.exp(-delta * 3.8)) * mapViewBlend;
+        const desiredOffset = normalizedMapOffset.current
+          .set(0, MathUtils.lerp(0.72, 0.96, localBlend), MathUtils.lerp(0.56, 0.24, localBlend))
+          .setLength(distance);
+        const desiredPosition = normalizedMapOffset.current
+          .copy(desiredOffset)
+          .add(target);
+        const easing = (1 - Math.exp(-delta * 4.2)) * mapViewBlend;
         camera.position.lerp(desiredPosition, easing);
         camera.lookAt(target);
         controls.current.update();
@@ -126,19 +146,20 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
       enablePan
       enableRotate
       enableZoom
-      zoomSpeed={2.4}
+      zoomSpeed={3.2}
       mouseButtons={{
         LEFT: MOUSE.ROTATE,
         MIDDLE: MOUSE.DOLLY,
         RIGHT: MOUSE.PAN
       }}
       screenSpacePanning
+      zoomToCursor
       touches={{
         ONE: TOUCH.ROTATE,
         TWO: TOUCH.DOLLY_PAN
       }}
-      dampingFactor={0.08}
-      maxDistance={Math.max(bounds.width, bounds.depth) * 4.2}
+      dampingFactor={0.052}
+      maxDistance={activeRadius * 4.2}
       minDistance={42}
       maxPolarAngle={MathUtils.degToRad(82)}
     />
