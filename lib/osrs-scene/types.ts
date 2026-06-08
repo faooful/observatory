@@ -23,15 +23,29 @@ export type OsrsOverviewAsset = {
   planeTexture: string;
 };
 
+export type OsrsOverviewTile = {
+  x: number;
+  y: number;
+  mapXMin: number;
+  mapXMax: number;
+  mapYMin: number;
+  mapYMax: number;
+  texture: string;
+};
+
 export type OsrsTexturePyramid = {
   atlas: string;
   tileSize: number;
   columns: number;
   rows: number;
+  tileMapSquares?: number;
+  originMapX?: number;
+  originMapY?: number;
   levels: Array<{
     id: string;
     kind: "globe" | "plane";
     tiles: string[];
+    overviewTiles?: OsrsOverviewTile[];
   }>;
 };
 

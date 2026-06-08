@@ -13,7 +13,7 @@ import {
 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { useMapStore } from "@/lib/store/useMapStore";
-import type { OsrsMapSquareAsset, OsrsSceneManifest } from "@/lib/osrs-scene/types";
+import type { OsrsMapSquareAsset, OsrsOverviewTile, OsrsSceneManifest } from "@/lib/osrs-scene/types";
 
 const SCENE_ROOT = "/osrs-scene/osrs-238_2026-06-03";
 const MAP_SQUARE_SIZE = 64;
@@ -204,6 +204,45 @@ function GlobeMapLOD({ manifest, view, keepCloseFallback }: { manifest: OsrsScen
         opacity={1}
       />
     </mesh>
+  );
+}
+
+function PlaneOverviewTile({ manifest, tile, opacity }: { manifest: OsrsSceneManifest; tile: OsrsOverviewTile; opacity: number }) {
+  const texture = useLoader(TextureLoader, `${SCENE_ROOT}/${tile.texture}`);
+  const { centerX, centerY } = getSceneCenter(manifest);
+  const minX = tile.mapXMin * MAP_SQUARE_SIZE;
+  const maxX = (tile.mapXMax + 1) * MAP_SQUARE_SIZE;
+  const minY = tile.mapYMin * MAP_SQUARE_SIZE;
+  const maxY = (tile.mapYMax + 1) * MAP_SQUARE_SIZE;
+
+  texture.colorSpace = SRGBColorSpace;
+
+  return (
+    <mesh
+      position={[(minX + maxX) / 2 - centerX, -3, -((minY + maxY) / 2 - centerY)]}
+      rotation={[-Math.PI / 2, 0, 0]}
+    >
+      <planeGeometry args={[maxX - minX, maxY - minY]} />
+      <meshBasicMaterial map={texture} side={DoubleSide} transparent opacity={opacity} />
+    </mesh>
+  );
+}
+
+function PlaneOverviewTiles({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
+  const lod = getLod(manifest);
+  const overviewTiles = manifest.texturePyramid?.levels.find((level) => level.kind === "plane")?.overviewTiles ?? [];
+  const opacity = 1 - MathUtils.smoothstep(view.distance, lod.planeDistance * 0.82, lod.globeDistance * 1.08);
+
+  if (overviewTiles.length === 0 || opacity <= 0.01) {
+    return null;
+  }
+
+  return (
+    <group>
+      {overviewTiles.map((tile) => (
+        <PlaneOverviewTile key={`${tile.x}_${tile.y}`} manifest={manifest} tile={tile} opacity={opacity} />
+      ))}
+    </group>
   );
 }
 
@@ -418,6 +457,7 @@ export function OsrsCacheScene({ onManifest }: OsrsCacheSceneProps) {
   return (
     <group>
       <GlobeMapLOD manifest={manifest} view={view} keepCloseFallback={visibleChunkCount === 0} />
+      <PlaneOverviewTiles manifest={manifest} view={view} />
       <StreamedSceneChunks manifest={manifest} view={view} onVisibleChunkCount={setVisibleChunkCount} />
     </group>
   );
