@@ -21,6 +21,8 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
   const selectedPinId = useMapStore((state) => state.selectedPinId);
   const viewVersion = useMapStore((state) => state.viewVersion);
   const initialTarget = useMemo(() => new Vector3(...defaultTarget), [defaultTarget]);
+  const normalizedMapOffset = useRef(new Vector3());
+  const worldViewDistance = Math.max(bounds.width, bounds.depth) * 2.5;
   const initialPosition = useMemo(() => {
     const radius = Math.max(bounds.width, bounds.depth);
     return initialTarget.clone().add(new Vector3(radius * 0.62, radius * 2.35, radius * 1.68));
@@ -68,6 +70,29 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
   }, [camera, initialPosition, viewVersion]);
 
   useFrame((_, delta) => {
+    if (controls.current) {
+      const distance = camera.position.distanceTo(controls.current.target);
+      const isWorldView = distance >= worldViewDistance;
+      const mapViewBlend = 1 - MathUtils.smoothstep(distance, worldViewDistance * 0.82, worldViewDistance);
+      controls.current.enableRotate = isWorldView;
+      controls.current.enablePan = !isWorldView;
+      controls.current.mouseButtons.LEFT = isWorldView ? MOUSE.ROTATE : MOUSE.PAN;
+      controls.current.mouseButtons.RIGHT = MOUSE.PAN;
+      controls.current.touches.ONE = isWorldView ? TOUCH.ROTATE : TOUCH.PAN;
+      controls.current.touches.TWO = TOUCH.DOLLY_PAN;
+      controls.current.minPolarAngle = isWorldView ? MathUtils.degToRad(18) : 0;
+      controls.current.maxPolarAngle = isWorldView ? MathUtils.degToRad(162) : MathUtils.degToRad(82);
+
+      if (!isWorldView && !isFlying.current && mapViewBlend > 0) {
+        const target = controls.current.target;
+        const desiredPosition = normalizedMapOffset.current.set(0, distance * 0.86, distance * 0.5).add(target);
+        const easing = (1 - Math.exp(-delta * 3.8)) * mapViewBlend;
+        camera.position.lerp(desiredPosition, easing);
+        camera.lookAt(target);
+        controls.current.update();
+      }
+    }
+
     if (!isFlying.current) {
       return;
     }
@@ -99,17 +124,17 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0] }: CameraRig
       makeDefault
       enableDamping
       enablePan
-      enableRotate={false}
+      enableRotate
       enableZoom
       zoomSpeed={2.4}
       mouseButtons={{
-        LEFT: MOUSE.PAN,
+        LEFT: MOUSE.ROTATE,
         MIDDLE: MOUSE.DOLLY,
         RIGHT: MOUSE.PAN
       }}
       screenSpacePanning
       touches={{
-        ONE: TOUCH.PAN,
+        ONE: TOUCH.ROTATE,
         TWO: TOUCH.DOLLY_PAN
       }}
       dampingFactor={0.08}
