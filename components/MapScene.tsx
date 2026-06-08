@@ -61,8 +61,8 @@ export function MapScene() {
         camera={{
           position: [
             activeTarget[0] + activeRadius * 0.62,
-            activeRadius * 2.35,
-            activeTarget[2] + activeRadius * 1.68
+            activeRadius * 1.18,
+            activeTarget[2] + activeRadius * 2.55
           ],
           fov: 42,
           near: 0.1,
