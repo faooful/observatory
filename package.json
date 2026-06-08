@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate:terrain": "tsx scripts/generate-mock-terrain.ts"
+    "generate:terrain": "tsx scripts/generate-mock-terrain.ts",
+    "generate:osrs-cache-scene": "tsx scripts/generate-osrs-cache-scene.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

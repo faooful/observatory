@@ -63,7 +63,7 @@ export function ActivitySidebar() {
         </div>
       </section>
 
-      <p className="empty-state">Mock terrain follows the final chunk schema, ready for cache-derived heights later.</p>
+      <p className="empty-state">Zoom from a cache-textured globe into streamed scene chunks.</p>
     </aside>
   );
 }
