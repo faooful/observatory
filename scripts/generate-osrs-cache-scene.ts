@@ -6,10 +6,9 @@ const REPO_URL = "https://github.com/dennisdev/rs-map-viewer.git";
 const CACHE_ID = 2565;
 const CACHE_NAME = "osrs-238_2026-06-03";
 const CACHE_VERSION = "osrs-238_2026-06-03";
-const MAP_X_MIN = 48;
-const MAP_X_MAX = 53;
-const MAP_Y_MIN = 43;
-const MAP_Y_MAX = 50;
+const SURFACE_MAP_Y_MAX = 99;
+const PLANE_TILE_MAP_SQUARES = 8;
+const GLOBE_TILE_SIZE = 32;
 
 const root = process.cwd();
 const cacheRoot = resolve(root, ".cache");
@@ -91,10 +90,9 @@ const CACHE_ID = ${CACHE_ID};
 const CACHE_NAME = "${CACHE_NAME}";
 const CACHE_VERSION = "${CACHE_VERSION}";
 const OUTPUT_DIR = ${JSON.stringify(outputDir)};
-const MAP_X_MIN = ${MAP_X_MIN};
-const MAP_X_MAX = ${MAP_X_MAX};
-const MAP_Y_MIN = ${MAP_Y_MIN};
-const MAP_Y_MAX = ${MAP_Y_MAX};
+const SURFACE_MAP_Y_MAX = ${SURFACE_MAP_Y_MAX};
+const PLANE_TILE_MAP_SQUARES = ${PLANE_TILE_MAP_SQUARES};
+const GLOBE_TILE_SIZE = ${GLOBE_TILE_SIZE};
 const CACHE_DIR = join(process.cwd(), "caches", CACHE_NAME);
 
 type ExportMesh = {
@@ -111,6 +109,21 @@ type PngImage = {
   width: number;
   height: number;
   data: Uint8Array;
+};
+
+type MapSquareCoord = {
+  mapX: number;
+  mapY: number;
+};
+
+type OverviewTile = {
+  x: number;
+  y: number;
+  mapXMin: number;
+  mapXMax: number;
+  mapYMin: number;
+  mapYMax: number;
+  texture: string;
 };
 
 function getCacheInfo() {
@@ -409,6 +422,14 @@ function cropImage(image: PngImage, x: number, y: number, width: number, height:
   return { width, height, data };
 }
 
+function pasteImage(target: PngImage, source: PngImage, targetX: number, targetY: number) {
+  for (let row = 0; row < source.height; row += 1) {
+    const sourceOffset = row * source.width * 4;
+    const targetOffset = ((targetY + row) * target.width + targetX) * 4;
+    target.data.set(source.data.subarray(sourceOffset, sourceOffset + source.width * 4), targetOffset);
+  }
+}
+
 function renderMapSquareImage(state: WorkerState, mapX: number, mapY: number): PngImage {
   const borderSize = 6;
   const baseX = mapX * Scene.MAP_SQUARE_SIZE - borderSize;
@@ -436,44 +457,131 @@ function renderMapSquareImage(state: WorkerState, mapX: number, mapY: number): P
   return { width, height, data };
 }
 
-function writeOverviewAssets(state: WorkerState) {
-  const overviewDir = join(OUTPUT_DIR, "overview");
-  mkdirSync(overviewDir, { recursive: true });
-  const squareSize = Scene.MAP_SQUARE_SIZE * 4;
-  const columns = MAP_X_MAX - MAP_X_MIN + 1;
-  const rows = MAP_Y_MAX - MAP_Y_MIN + 1;
-  const atlas: PngImage = {
-    width: columns * squareSize,
-    height: rows * squareSize,
-    data: new Uint8Array(columns * rows * squareSize * squareSize * 4),
-  };
+function discoverSurfaceMapSquares(state: WorkerState): MapSquareCoord[] {
+  const coords: MapSquareCoord[] = [];
 
-  for (let mapX = MAP_X_MIN; mapX <= MAP_X_MAX; mapX += 1) {
-    for (let mapY = MAP_Y_MIN; mapY <= MAP_Y_MAX; mapY += 1) {
-      const tile = renderMapSquareImage(state, mapX, mapY);
-      const column = mapX - MAP_X_MIN;
-      const row = MAP_Y_MAX - mapY;
-      for (let y = 0; y < squareSize; y += 1) {
-        const source = y * squareSize * 4;
-        const target = ((row * squareSize + y) * atlas.width + column * squareSize) * 4;
-        atlas.data.set(tile.data.subarray(source, source + squareSize * 4), target);
+  for (let mapX = 0; mapX < 100; mapX += 1) {
+    for (let mapY = 0; mapY <= SURFACE_MAP_Y_MAX; mapY += 1) {
+      if (state.sceneBuilder.mapFileLoader.getTerrainData(mapX, mapY)) {
+        coords.push({ mapX, mapY });
       }
     }
   }
 
-  writePng("overview/atlas.png", atlas);
-  let globe = atlas;
-  while (globe.width > 1024 || globe.height > 1024) {
-    globe = downsample2x(globe);
+  if (coords.length === 0) {
+    throw new Error("No valid surface map squares found");
   }
-  writePng("overview/globe/0/0_0.png", globe);
-  writePng("overview/plane/0/0_0.png", atlas);
 
-  const half = downsample2x(atlas);
-  writePng("overview/plane/1/0_0.png", cropImage(half, 0, 0, Math.floor(half.width / 2), Math.floor(half.height / 2)));
-  writePng("overview/plane/1/1_0.png", cropImage(half, Math.floor(half.width / 2), 0, half.width - Math.floor(half.width / 2), Math.floor(half.height / 2)));
-  writePng("overview/plane/1/0_1.png", cropImage(half, 0, Math.floor(half.height / 2), Math.floor(half.width / 2), half.height - Math.floor(half.height / 2)));
-  writePng("overview/plane/1/1_1.png", cropImage(half, Math.floor(half.width / 2), Math.floor(half.height / 2), half.width - Math.floor(half.width / 2), half.height - Math.floor(half.height / 2)));
+  return coords;
+}
+
+function getBounds(validMapSquares: MapSquareCoord[]) {
+  const xs = validMapSquares.map((coord) => coord.mapX);
+  const ys = validMapSquares.map((coord) => coord.mapY);
+  return {
+    mapXMin: Math.min(...xs),
+    mapXMax: Math.max(...xs),
+    mapYMin: Math.min(...ys),
+    mapYMax: Math.max(...ys),
+  };
+}
+
+function writeOverviewAssets(state: WorkerState, validMapSquares: MapSquareCoord[]): OverviewTile[] {
+  const overviewDir = join(OUTPUT_DIR, "overview");
+  mkdirSync(overviewDir, { recursive: true });
+  const fullSquareSize = Scene.MAP_SQUARE_SIZE * 4;
+  const { mapXMin, mapXMax, mapYMin, mapYMax } = getBounds(validMapSquares);
+  const columns = mapXMax - mapXMin + 1;
+  const rows = mapYMax - mapYMin + 1;
+  const validKeys = new Set(validMapSquares.map((coord) => coord.mapX + "_" + coord.mapY));
+  const globe: PngImage = {
+    width: columns * GLOBE_TILE_SIZE,
+    height: rows * GLOBE_TILE_SIZE,
+    data: new Uint8Array(columns * rows * GLOBE_TILE_SIZE * GLOBE_TILE_SIZE * 4),
+  };
+  const overviewTiles: OverviewTile[] = [];
+
+  for (let tileX = mapXMin; tileX <= mapXMax; tileX += PLANE_TILE_MAP_SQUARES) {
+    for (let tileY = mapYMin; tileY <= mapYMax; tileY += PLANE_TILE_MAP_SQUARES) {
+      const tileMapXMax = Math.min(tileX + PLANE_TILE_MAP_SQUARES - 1, mapXMax);
+      const tileMapYMax = Math.min(tileY + PLANE_TILE_MAP_SQUARES - 1, mapYMax);
+      const tileColumns = tileMapXMax - tileX + 1;
+      const tileRows = tileMapYMax - tileY + 1;
+      const planeTile: PngImage = {
+        width: tileColumns * fullSquareSize,
+        height: tileRows * fullSquareSize,
+        data: new Uint8Array(tileColumns * tileRows * fullSquareSize * fullSquareSize * 4),
+      };
+      let hasContent = false;
+
+      for (let mapX = tileX; mapX <= tileMapXMax; mapX += 1) {
+        for (let mapY = tileY; mapY <= tileMapYMax; mapY += 1) {
+          if (!validKeys.has(mapX + "_" + mapY)) {
+            continue;
+          }
+
+          const mapSquare = renderMapSquareImage(state, mapX, mapY);
+          const column = mapX - tileX;
+          const row = tileMapYMax - mapY;
+          pasteImage(planeTile, mapSquare, column * fullSquareSize, row * fullSquareSize);
+          pasteImage(
+            globe,
+            downsampleTo(mapSquare, GLOBE_TILE_SIZE, GLOBE_TILE_SIZE),
+            (mapX - mapXMin) * GLOBE_TILE_SIZE,
+            (mapYMax - mapY) * GLOBE_TILE_SIZE,
+          );
+          hasContent = true;
+        }
+      }
+
+      if (hasContent) {
+        const tileColumn = Math.floor((tileX - mapXMin) / PLANE_TILE_MAP_SQUARES);
+        const tileRow = Math.floor((mapYMax - tileY) / PLANE_TILE_MAP_SQUARES);
+        const texture = "overview/plane/0/" + tileColumn + "_" + tileRow + ".png";
+        writePng(texture, planeTile);
+        overviewTiles.push({
+          x: tileColumn,
+          y: tileRow,
+          mapXMin: tileX,
+          mapXMax: tileMapXMax,
+          mapYMin: tileY,
+          mapYMax: tileMapYMax,
+          texture,
+        });
+      }
+    }
+  }
+
+  let globeTexture = globe;
+  while (globeTexture.width > 1024 || globeTexture.height > 1024) {
+    globeTexture = downsample2x(globeTexture);
+  }
+  writePng("overview/globe/0/0_0.png", globeTexture);
+  return overviewTiles;
+}
+
+function downsampleTo(image: PngImage, width: number, height: number): PngImage {
+  let current = image;
+  while (current.width / 2 >= width && current.height / 2 >= height) {
+    current = downsample2x(current);
+  }
+  if (current.width === width && current.height === height) {
+    return current;
+  }
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const sourceX = Math.min(current.width - 1, Math.floor((x / width) * current.width));
+      const sourceY = Math.min(current.height - 1, Math.floor((y / height) * current.height));
+      const source = (sourceY * current.width + sourceX) * 4;
+      const target = (y * width + x) * 4;
+      data[target] = current.data[source];
+      data[target + 1] = current.data[source + 1];
+      data[target + 2] = current.data[source + 2];
+      data[target + 3] = current.data[source + 3];
+    }
+  }
+  return { width, height, data };
 }
 
 async function exportScene() {
@@ -482,13 +590,14 @@ async function exportScene() {
 
   const cache = loadCache();
   const state = await createWorkerState(cache);
-  writeOverviewAssets(state);
+  const validMapSquares = discoverSurfaceMapSquares(state);
+  const overviewTiles = writeOverviewAssets(state, validMapSquares);
+  const { mapXMin, mapXMax, mapYMin, mapYMax } = getBounds(validMapSquares);
   const loader = new SdMapDataLoader();
   loader.init();
   const chunks: ExportMesh[] = [];
 
-  for (let mapX = MAP_X_MIN; mapX <= MAP_X_MAX; mapX += 1) {
-    for (let mapY = MAP_Y_MIN; mapY <= MAP_Y_MAX; mapY += 1) {
+  for (const { mapX, mapY } of validMapSquares) {
       const input: SdMapLoaderInput = {
         mapX,
         mapY,
@@ -506,6 +615,10 @@ async function exportScene() {
       }
 
       const chunk = decodeMesh(mapX, mapY, result.data.vertices, result.data.indices);
+      if (chunk.vertexCount === 0 || chunk.indexCount === 0) {
+        console.warn("Skipping empty scene data", mapX, mapY);
+        continue;
+      }
 
       const positions = new Float32Array(chunk.vertexCount * 3);
       const colors = new Float32Array(chunk.vertexCount * 4);
@@ -537,7 +650,6 @@ async function exportScene() {
       writeBinary(chunk.indices, result.data.indices);
       chunks.push(chunk);
       console.log("Exported", mapX, mapY, chunk.vertexCount, chunk.indexCount);
-    }
   }
 
   const manifest = {
@@ -545,48 +657,38 @@ async function exportScene() {
     cacheId: CACHE_ID,
     revision: 238,
     bounds: {
-      minX: MAP_X_MIN * Scene.MAP_SQUARE_SIZE,
-      maxX: (MAP_X_MAX + 1) * Scene.MAP_SQUARE_SIZE,
-      minY: MAP_Y_MIN * Scene.MAP_SQUARE_SIZE,
-      maxY: (MAP_Y_MAX + 1) * Scene.MAP_SQUARE_SIZE,
+      minX: mapXMin * Scene.MAP_SQUARE_SIZE,
+      maxX: (mapXMax + 1) * Scene.MAP_SQUARE_SIZE,
+      minY: mapYMin * Scene.MAP_SQUARE_SIZE,
+      maxY: (mapYMax + 1) * Scene.MAP_SQUARE_SIZE,
     },
     overview: {
       globeTexture: "overview/globe/0/0_0.png",
-      planeTexture: "overview/plane/0/0_0.png",
+      planeTexture: overviewTiles[0]?.texture ?? "overview/globe/0/0_0.png",
     },
     texturePyramid: {
-      atlas: "overview/atlas.png",
+      atlas: "overview/globe/0/0_0.png",
       tileSize: Scene.MAP_SQUARE_SIZE * 4,
-      columns: MAP_X_MAX - MAP_X_MIN + 1,
-      rows: MAP_Y_MAX - MAP_Y_MIN + 1,
+      columns: mapXMax - mapXMin + 1,
+      rows: mapYMax - mapYMin + 1,
+      tileMapSquares: PLANE_TILE_MAP_SQUARES,
+      originMapX: mapXMin,
+      originMapY: mapYMin,
       levels: [
         { id: "globe-0", kind: "globe", tiles: ["overview/globe/0/0_0.png"] },
-        { id: "plane-0", kind: "plane", tiles: ["overview/plane/0/0_0.png"] },
-        {
-          id: "plane-1",
-          kind: "plane",
-          tiles: [
-            "overview/plane/1/0_0.png",
-            "overview/plane/1/1_0.png",
-            "overview/plane/1/0_1.png",
-            "overview/plane/1/1_1.png",
-          ],
-        },
+        { id: "plane-0", kind: "plane", tiles: overviewTiles.map((tile) => tile.texture), overviewTiles },
       ],
     },
     projection: {
       type: "globe-to-plane",
-      radius: Math.max((MAP_X_MAX - MAP_X_MIN + 1) * Scene.MAP_SQUARE_SIZE, (MAP_Y_MAX - MAP_Y_MIN + 1) * Scene.MAP_SQUARE_SIZE) * 0.48,
-      worldWidth: (MAP_X_MAX - MAP_X_MIN + 1) * Scene.MAP_SQUARE_SIZE,
-      worldDepth: (MAP_Y_MAX - MAP_Y_MIN + 1) * Scene.MAP_SQUARE_SIZE,
+      radius: Math.max((mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE, (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE) * 0.48,
+      worldWidth: (mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE,
+      worldDepth: (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE,
     },
-    validMapSquares: Array.from({ length: (MAP_X_MAX - MAP_X_MIN + 1) * (MAP_Y_MAX - MAP_Y_MIN + 1) }, (_, index) => ({
-      mapX: MAP_X_MIN + (index % (MAP_X_MAX - MAP_X_MIN + 1)),
-      mapY: MAP_Y_MIN + Math.floor(index / (MAP_X_MAX - MAP_X_MIN + 1)),
-    })),
+    validMapSquares,
     lod: {
-      globeDistance: 1650,
-      planeDistance: 1280,
+      globeDistance: Math.max((mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE, (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE) * 1.8,
+      planeDistance: Math.max((mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE, (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE) * 1.35,
       closeDistance: 520,
       closeChunkRadius: 2,
     },
