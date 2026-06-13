@@ -13,14 +13,22 @@ import {
   TextureLoader,
   Vector3
 } from "three";
-import type { MeshBasicMaterial, MeshStandardMaterial, Texture } from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from "three";
+import type { CameraControlsImpl } from "@react-three/drei";
 import { useMapStore } from "@/lib/store/useMapStore";
-import type { OsrsMapSquareAsset, OsrsOverviewTile, OsrsSceneManifest } from "@/lib/osrs-scene/types";
+import type { OsrsMapSquareAsset, OsrsSceneManifest } from "@/lib/osrs-scene/types";
+import {
+  OVERVIEW_PLANE_Y,
+  getProjectionMorph,
+  getProjectionTransition,
+  getSurfacePointFromUv,
+  surfaceToMapWorld
+} from "@/lib/osrs-scene/projection";
 
 const SCENE_ROOT = "/osrs-scene/osrs-238_2026-06-03";
 const MAP_SQUARE_SIZE = 64;
-const RETAIN_CHUNK_MS = 2400;
+const RETAIN_CHUNK_MS = 5200;
+const MAX_CONCURRENT_CHUNK_LOADS = 18;
 
 type LoadedChunk = {
   asset: OsrsMapSquareAsset;
@@ -50,7 +58,32 @@ type ZoomPhase = "globe" | "transition" | "local";
 
 type SceneLod = ReturnType<typeof getLod>;
 
-type OverviewTextureMode = "full" | "surface-globe";
+type MapWorldBounds = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+};
+
+type OverviewTextureResult = {
+  texture: Texture;
+  mapBounds: MapWorldBounds;
+  source: string;
+};
+
+type ObservatoryDebugWindow = Window & {
+  __OBSERVATORY_SCENE__?: {
+    distance: number;
+    targetWorldX: number;
+    targetWorldY: number;
+    transition: number;
+    morph: number;
+    globeOpacity: number;
+    planeOpacity: number;
+    chunkOpacity: number;
+    visibleMapSquareRadius: number;
+  };
+};
 
 async function loadBinary<T extends Float32Array | Uint32Array | Int32Array>(
   path: string,
@@ -93,6 +126,10 @@ function getSceneCenter(manifest: OsrsSceneManifest) {
   };
 }
 
+function scenePointToWorld(point: Vector3, manifest: OsrsSceneManifest, morph: number) {
+  return surfaceToMapWorld(point, manifest.bounds, manifest.projection, morph, OVERVIEW_PLANE_Y);
+}
+
 function getLod(manifest: OsrsSceneManifest) {
   return {
     globeDistance: manifest.lod?.globeDistance ?? 1050,
@@ -103,15 +140,30 @@ function getLod(manifest: OsrsSceneManifest) {
 }
 
 function getZoomPhase(distance: number, lod: SceneLod): ZoomPhase {
-  if (distance > lod.planeDistance * 1.05) {
+  if (distance > lod.planeDistance * 1.22) {
     return "globe";
   }
 
-  if (distance > lod.closeDistance * 1.45) {
+  if (distance > lod.closeDistance * 1.22) {
     return "transition";
   }
 
   return "local";
+}
+
+function getGlobeOpacity(transition: number) {
+  return 1 - MathUtils.smoothstep(transition, 0.18, 0.66);
+}
+
+function getFlatOverviewOpacity(transition: number) {
+  const fadeIn = MathUtils.smoothstep(transition, 0.14, 0.52);
+  const fadeOut = 1 - MathUtils.smoothstep(transition, 0.88, 1);
+  const closeFloor = MathUtils.smoothstep(transition, 0.86, 1) * 0.34;
+  return Math.max(closeFloor, fadeIn * fadeOut);
+}
+
+function getStreamedChunkOpacity(transition: number) {
+  return MathUtils.smoothstep(transition, 0.48, 0.9);
 }
 
 function getChunkRadius(distance: number, lod: SceneLod, movementSpeed: number) {
@@ -124,7 +176,7 @@ function getChunkRadius(distance: number, lod: SceneLod, movementSpeed: number) 
 }
 
 function shouldStreamChunks(distance: number, lod: SceneLod) {
-  return distance <= lod.closeDistance * 2.4;
+  return distance <= lod.planeDistance * 0.82;
 }
 
 function sortWantedChunksByDistance(
@@ -145,23 +197,43 @@ function sortWantedChunksByDistance(
   });
 }
 
-function useOverviewTexture(manifest: OsrsSceneManifest, mode: OverviewTextureMode = "full") {
+function useOverviewTexture(manifest: OsrsSceneManifest): OverviewTextureResult {
   const overviewTiles = manifest.texturePyramid?.levels.find((level) => level.kind === "plane")?.overviewTiles ?? [];
+  const fullTexture = manifest.overview?.fullTexture;
   const fallbackTexture =
     manifest.texturePyramid?.levels.find((level) => level.kind === "globe")?.tiles[0] ??
     manifest.overview?.globeTexture ??
     "overview/globe/0/0_0.png";
   const texturePaths = useMemo(
-    () => (overviewTiles.length > 0 ? overviewTiles.map((tile) => `${SCENE_ROOT}/${tile.texture}`) : [`${SCENE_ROOT}/${fallbackTexture}`]),
-    [fallbackTexture, overviewTiles]
+    () =>
+      fullTexture
+        ? [`${SCENE_ROOT}/${fullTexture}`]
+        : overviewTiles.length > 0
+          ? overviewTiles.map((tile) => `${SCENE_ROOT}/${tile.texture}`)
+          : [`${SCENE_ROOT}/${fallbackTexture}`],
+    [fallbackTexture, fullTexture, overviewTiles]
   );
   const textures = useLoader(TextureLoader, texturePaths) as Texture[];
 
   return useMemo(() => {
+    if (fullTexture) {
+      const [texture] = textures;
+      texture.colorSpace = SRGBColorSpace;
+      return {
+        texture,
+        mapBounds: manifest.bounds,
+        source: fullTexture
+      };
+    }
+
     if (overviewTiles.length === 0) {
       const [texture] = textures;
       texture.colorSpace = SRGBColorSpace;
-      return texture;
+      return {
+        texture,
+        mapBounds: manifest.bounds,
+        source: fallbackTexture
+      };
     }
 
     let textureTiles = overviewTiles;
@@ -170,73 +242,10 @@ function useOverviewTexture(manifest: OsrsSceneManifest, mode: OverviewTextureMo
     let minWorldY = manifest.bounds.minY;
     let maxWorldY = manifest.bounds.maxY;
 
-    if (mode === "surface-globe") {
-      const rowStats = new Map<number, { alpha: number; dark: number; blueGreen: number; total: number }>();
-
-      overviewTiles.forEach((tile, index) => {
-        const image = textures[index]?.image as CanvasImageSource | undefined;
-        if (!image) {
-          return;
-        }
-
-        const sampleCanvas = document.createElement("canvas");
-        const sampleContext = sampleCanvas.getContext("2d");
-        if (!sampleContext) {
-          return;
-        }
-
-        sampleCanvas.width = 32;
-        sampleCanvas.height = 32;
-        sampleContext.drawImage(image, 0, 0, sampleCanvas.width, sampleCanvas.height);
-        const { data } = sampleContext.getImageData(0, 0, sampleCanvas.width, sampleCanvas.height);
-        const stats = rowStats.get(tile.y) ?? { alpha: 0, dark: 0, blueGreen: 0, total: 0 };
-
-        for (let offset = 0; offset < data.length; offset += 4) {
-          const alpha = data[offset + 3];
-          if (alpha <= 16) {
-            stats.total += 1;
-            continue;
-          }
-
-          const red = data[offset];
-          const green = data[offset + 1];
-          const blue = data[offset + 2];
-          stats.alpha += 1;
-          stats.total += 1;
-          if (red + green + blue < 60) {
-            stats.dark += 1;
-          }
-          if (blue > 55 && (green > 45 || red < 80)) {
-            stats.blueGreen += 1;
-          }
-        }
-
-        rowStats.set(tile.y, stats);
-      });
-
-      const surfaceRows = new Set<number>();
-      rowStats.forEach((stats, row) => {
-        const alphaRatio = stats.alpha / Math.max(1, stats.total);
-        const darkRatio = stats.dark / Math.max(1, stats.alpha);
-        const blueGreenRatio = stats.blueGreen / Math.max(1, stats.alpha);
-        if (alphaRatio > 0.25 && darkRatio < 0.28 && blueGreenRatio > 0.32) {
-          surfaceRows.add(row);
-        }
-      });
-
-      if (surfaceRows.size > 0) {
-        textureTiles = overviewTiles.filter((tile) => surfaceRows.has(tile.y));
-        minWorldX = Math.min(...textureTiles.map((tile) => tile.mapXMin * MAP_SQUARE_SIZE));
-        maxWorldX = Math.max(...textureTiles.map((tile) => (tile.mapXMax + 1) * MAP_SQUARE_SIZE));
-        minWorldY = Math.min(...textureTiles.map((tile) => tile.mapYMin * MAP_SQUARE_SIZE));
-        maxWorldY = Math.max(...textureTiles.map((tile) => (tile.mapYMax + 1) * MAP_SQUARE_SIZE));
-      }
-    }
-
     const width = maxWorldX - minWorldX;
     const depth = maxWorldY - minWorldY;
     const canvasWidth = 2048;
-    const canvasHeight = mode === "surface-globe" ? 1024 : Math.round(canvasWidth * (depth / width));
+    const canvasHeight = Math.round(canvasWidth * (depth / width));
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
 
@@ -284,8 +293,17 @@ function useOverviewTexture(manifest: OsrsSceneManifest, mode: OverviewTextureMo
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
     texture.needsUpdate = true;
-    return texture;
-  }, [manifest.bounds.maxX, manifest.bounds.maxY, manifest.bounds.minX, manifest.bounds.minY, mode, overviewTiles, textures]);
+    return {
+      texture,
+      source: "runtime-stitched-overview",
+      mapBounds: {
+        minX: minWorldX,
+        maxX: maxWorldX,
+        minY: minWorldY,
+        maxY: maxWorldY
+      }
+    };
+  }, [fallbackTexture, fullTexture, manifest.bounds, manifest.bounds.maxX, manifest.bounds.maxY, manifest.bounds.minX, manifest.bounds.minY, overviewTiles, textures]);
 }
 
 function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest: OsrsSceneManifest; opacity: number }) {
@@ -326,7 +344,15 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
   });
 
   return (
-    <mesh geometry={geometry} receiveShadow>
+    <mesh
+      geometry={geometry}
+      receiveShadow
+      userData={{
+        mapSurface: true,
+        mapSurfacePriority: 40,
+        mapBounds: manifest.bounds
+      }}
+    >
       <meshStandardMaterial
         ref={material}
         vertexColors
@@ -340,17 +366,18 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
   );
 }
 
-function GlobeMapLOD({ manifest, view, keepCloseFallback }: { manifest: OsrsSceneManifest; view: SceneView; keepCloseFallback: boolean }) {
-  const texture = useOverviewTexture(manifest, "surface-globe");
-  const geometry = useMemo(() => new BufferGeometry(), []);
-  const width = manifest.bounds.maxX - manifest.bounds.minX;
-  const depth = manifest.bounds.maxY - manifest.bounds.minY;
-  const radius = manifest.projection?.radius ?? Math.max(width, depth) * 0.48;
+function OverviewMapLOD({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
+  const { texture, mapBounds, source } = useOverviewTexture(manifest);
+  const globeMesh = useRef<Mesh>(null);
+  const planeMesh = useRef<Mesh>(null);
+  const globeMaterial = useRef<MeshBasicMaterial>(null);
+  const planeMaterial = useRef<MeshBasicMaterial>(null);
   const lod = useMemo(() => getLod(manifest), [manifest]);
   const columns = 96;
   const rows = 96;
+  const vertexCount = (columns + 1) * (rows + 1);
   const uv = useMemo(() => {
-    const values = new Float32Array((columns + 1) * (rows + 1) * 2);
+    const values = new Float32Array(vertexCount * 2);
     for (let row = 0; row <= rows; row += 1) {
       for (let column = 0; column <= columns; column += 1) {
         const index = row * (columns + 1) + column;
@@ -359,7 +386,7 @@ function GlobeMapLOD({ manifest, view, keepCloseFallback }: { manifest: OsrsScen
       }
     }
     return values;
-  }, []);
+  }, [vertexCount]);
   const indices = useMemo(() => {
     const values: number[] = [];
     for (let row = 0; row < rows; row += 1) {
@@ -373,108 +400,140 @@ function GlobeMapLOD({ manifest, view, keepCloseFallback }: { manifest: OsrsScen
     }
     return new Uint32Array(values);
   }, []);
-
-  texture.colorSpace = SRGBColorSpace;
-
-  useFrame(() => {
-    const planeT = MathUtils.smoothstep(view.distance, lod.closeDistance * 1.25, lod.planeDistance * 0.62);
-    const morph = 1 - planeT;
-    const closeOpacity = keepCloseFallback ? 0.2 : 0;
-    const opacity = Math.max(closeOpacity, MathUtils.smoothstep(view.distance, lod.closeDistance * 0.9, lod.closeDistance * 1.45));
-    const positions = new Float32Array((columns + 1) * (rows + 1) * 3);
+  const geometries = useMemo(() => {
+    const globePositions = new Float32Array(vertexCount * 3);
+    const planePositions = new Float32Array(vertexCount * 3);
+    const surfacePoint = new Vector3();
 
     for (let row = 0; row <= rows; row += 1) {
       const v = row / rows;
-      const latitude = (0.5 - v) * Math.PI;
       for (let column = 0; column <= columns; column += 1) {
         const u = column / columns;
-        const longitude = (u - 0.5) * Math.PI * 2;
         const index = row * (columns + 1) + column;
-        const planeX = (u - 0.5) * width;
-        const planeZ = (v - 0.5) * depth;
-        const globeX = Math.cos(latitude) * Math.sin(longitude) * radius;
-        const globeY = Math.sin(latitude) * radius + radius * 0.18;
-        const globeZ = Math.cos(latitude) * Math.cos(longitude) * radius;
+        const offset = index * 3;
 
-        positions[index * 3] = MathUtils.lerp(globeX, planeX, morph);
-        positions[index * 3 + 1] = MathUtils.lerp(globeY, -2, morph);
-        positions[index * 3 + 2] = MathUtils.lerp(globeZ, planeZ, morph);
+        getSurfacePointFromUv(u, v, mapBounds, manifest.projection, 0, OVERVIEW_PLANE_Y, surfacePoint);
+        globePositions[offset] = surfacePoint.x;
+        globePositions[offset + 1] = surfacePoint.y;
+        globePositions[offset + 2] = surfacePoint.z;
+        getSurfacePointFromUv(u, v, mapBounds, manifest.projection, 1, OVERVIEW_PLANE_Y, surfacePoint);
+        planePositions[offset] = surfacePoint.x;
+        planePositions[offset + 1] = surfacePoint.y;
+        planePositions[offset + 2] = surfacePoint.z;
       }
     }
 
-    geometry.setAttribute("position", new BufferAttribute(positions, 3));
-    geometry.setAttribute("uv", new BufferAttribute(uv, 2));
-    geometry.setIndex(new BufferAttribute(indices, 1));
-    geometry.computeVertexNormals();
-    const material = geometry.userData.material as MeshBasicMaterial | undefined;
-    if (material) {
-      material.opacity = opacity;
-      material.transparent = opacity < 0.999;
-      material.depthWrite = opacity >= 0.999;
-      material.needsUpdate = true;
-    }
-  });
+    const globeGeometry = new BufferGeometry();
+    globeGeometry.setAttribute("position", new BufferAttribute(globePositions, 3));
+    globeGeometry.setAttribute("uv", new BufferAttribute(uv, 2));
+    globeGeometry.setIndex(new BufferAttribute(indices, 1));
+    globeGeometry.computeVertexNormals();
 
-  return (
-    <mesh geometry={geometry}>
-      <meshBasicMaterial
-        ref={(material) => {
-          geometry.userData.material = material;
-        }}
-        map={texture}
-        side={FrontSide}
-        transparent={false}
-        opacity={1}
-      />
-    </mesh>
-  );
-}
+    const planeGeometry = new BufferGeometry();
+    planeGeometry.setAttribute("position", new BufferAttribute(planePositions, 3));
+    planeGeometry.setAttribute("uv", new BufferAttribute(uv, 2));
+    planeGeometry.setIndex(new BufferAttribute(indices, 1));
+    planeGeometry.computeVertexNormals();
 
-function PlaneOverviewTile({ manifest, tile, opacity }: { manifest: OsrsSceneManifest; tile: OsrsOverviewTile; opacity: number }) {
-  const texture = useLoader(TextureLoader, `${SCENE_ROOT}/${tile.texture}`);
-  const { centerX, centerY } = getSceneCenter(manifest);
-  const minX = tile.mapXMin * MAP_SQUARE_SIZE;
-  const maxX = (tile.mapXMax + 1) * MAP_SQUARE_SIZE;
-  const minY = tile.mapYMin * MAP_SQUARE_SIZE;
-  const maxY = (tile.mapYMax + 1) * MAP_SQUARE_SIZE;
+    return { globeGeometry, planeGeometry };
+  }, [
+    indices,
+    manifest.bounds.maxX,
+    manifest.bounds.maxY,
+    manifest.bounds.minX,
+    manifest.bounds.minY,
+    mapBounds.maxX,
+    mapBounds.maxY,
+    mapBounds.minX,
+    mapBounds.minY,
+    manifest.projection,
+    uv,
+    vertexCount
+  ]);
 
   texture.colorSpace = SRGBColorSpace;
 
+  useEffect(() => {
+    if (!window.location.search.includes("debugZoom=1")) {
+      return;
+    }
+
+    const image = texture.image as { width?: number; height?: number } | undefined;
+    document.documentElement.dataset.observatoryTexture = JSON.stringify({
+      source,
+      width: image?.width ?? null,
+      height: image?.height ?? null,
+      mapBounds
+    });
+  }, [mapBounds, source, texture]);
+
+  useFrame(() => {
+    const transition = getProjectionTransition(view.distance, manifest.bounds, lod);
+    const globeOpacity = getGlobeOpacity(transition);
+    const planeOpacity = getFlatOverviewOpacity(transition);
+
+    if (globeMaterial.current) {
+      globeMaterial.current.opacity = globeOpacity;
+      globeMaterial.current.transparent = globeOpacity < 0.999;
+      globeMaterial.current.depthWrite = globeOpacity >= 0.92;
+    }
+
+    if (globeMesh.current) {
+      globeMesh.current.visible = globeOpacity > 0.01;
+    }
+
+    if (planeMaterial.current) {
+      planeMaterial.current.opacity = planeOpacity;
+      planeMaterial.current.transparent = planeOpacity < 0.999;
+      planeMaterial.current.depthWrite = planeOpacity >= 0.92;
+    }
+
+    if (planeMesh.current) {
+      planeMesh.current.visible = planeOpacity > 0.01;
+    }
+  });
+
+  const transition = getProjectionTransition(view.distance, manifest.bounds, lod);
+  const globeOpacity = getGlobeOpacity(transition);
+  const planeOpacity = getFlatOverviewOpacity(transition);
+
   return (
-    <mesh
-      position={[(minX + maxX) / 2 - centerX, -3, -((minY + maxY) / 2 - centerY)]}
-      rotation={[-Math.PI / 2, 0, 0]}
-    >
-      <planeGeometry args={[maxX - minX, maxY - minY]} />
-      <meshBasicMaterial map={texture} side={DoubleSide} transparent opacity={opacity} />
-    </mesh>
-  );
-}
-
-function PlaneOverviewTiles({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
-  const texture = useOverviewTexture(manifest);
-  const lod = useMemo(() => getLod(manifest), [manifest]);
-  const { centerX, centerY } = getSceneCenter(manifest);
-  const width = manifest.bounds.maxX - manifest.bounds.minX;
-  const depth = manifest.bounds.maxY - manifest.bounds.minY;
-  const farFade = 1 - MathUtils.smoothstep(view.distance, lod.closeDistance * 1.4, lod.planeDistance * 0.58);
-  const closeFallback = MathUtils.lerp(0.42, 1, MathUtils.smoothstep(view.distance, lod.closeDistance * 0.62, lod.closeDistance * 1.35));
-  const opacity = farFade * closeFallback;
-
-  if (opacity <= 0.01) {
-    return null;
-  }
-
-  return (
-    <mesh position={[centerX - centerX, -3, -(centerY - centerY)]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[width, depth]} />
-      <meshBasicMaterial map={texture} side={DoubleSide} transparent opacity={opacity} />
-    </mesh>
+    <group>
+      <mesh
+        ref={globeMesh}
+        geometry={geometries.globeGeometry}
+        renderOrder={20}
+        visible={globeOpacity > 0.01}
+        userData={{
+          mapSurface: true,
+          mapSurfacePriority: globeOpacity >= planeOpacity ? 30 : 10,
+          mapBounds,
+          surfaceMorph: 0
+        }}
+      >
+        <meshBasicMaterial ref={globeMaterial} map={texture} side={FrontSide} transparent opacity={globeOpacity} visible={globeOpacity > 0.01} />
+      </mesh>
+      <mesh
+        ref={planeMesh}
+        geometry={geometries.planeGeometry}
+        renderOrder={10}
+        visible={planeOpacity > 0.01}
+        userData={{
+          mapSurface: true,
+          mapSurfacePriority: planeOpacity > globeOpacity ? 30 : 10,
+          mapBounds,
+          surfaceMorph: 1
+        }}
+      >
+        <meshBasicMaterial ref={planeMaterial} map={texture} side={DoubleSide} transparent opacity={planeOpacity} visible={planeOpacity > 0.01} />
+      </mesh>
+    </group>
   );
 }
 
 function useSceneView(manifest: OsrsSceneManifest | null) {
   const get = useThree((state) => state.get);
+  const targetScratch = useRef(new Vector3());
   const lastSample = useRef({
     at: performance.now(),
     targetWorldX: 3244.43,
@@ -502,11 +561,14 @@ function useSceneView(manifest: OsrsSceneManifest | null) {
 
     const { centerX, centerY } = getSceneCenter(manifest);
     const lod = getLod(manifest);
-    const controls = (get() as unknown as { controls?: OrbitControlsImpl }).controls;
-    const target = controls?.target ?? new Vector3(0, 0, 0);
+    const controls = (get() as unknown as { controls?: CameraControlsImpl }).controls;
+    const target = controls?.getTarget(targetScratch.current) ?? targetScratch.current.set(0, 0, 0);
     const distance = camera.position.distanceTo(target);
-    const targetWorldX = MathUtils.clamp(target.x + centerX, manifest.bounds.minX, manifest.bounds.maxX);
-    const targetWorldY = MathUtils.clamp(centerY - target.z, manifest.bounds.minY, manifest.bounds.maxY);
+    const transition = getProjectionTransition(distance, manifest.bounds, lod);
+    const morph = getProjectionMorph(distance, manifest.bounds, lod);
+    const targetWorld = scenePointToWorld(target, manifest, morph);
+    const targetWorldX = targetWorld.x;
+    const targetWorldY = targetWorld.y;
     const now = performance.now();
     const elapsedSeconds = Math.max((now - lastSample.current.at) / 1000, 0.016);
     const movementSpeed =
@@ -526,6 +588,30 @@ function useSceneView(manifest: OsrsSceneManifest | null) {
       movementSpeed,
       chunkPriorityCenter
     };
+    if (window.location.search.includes("debugZoom=1")) {
+      (window as ObservatoryDebugWindow).__OBSERVATORY_SCENE__ = {
+        distance,
+        targetWorldX,
+        targetWorldY,
+        transition,
+        morph,
+        globeOpacity: getGlobeOpacity(transition),
+        planeOpacity: getFlatOverviewOpacity(transition),
+        chunkOpacity: getStreamedChunkOpacity(transition),
+        visibleMapSquareRadius: nextView.visibleMapSquareRadius
+      };
+      document.documentElement.dataset.observatoryScene = JSON.stringify({
+        distance,
+        targetWorldX,
+        targetWorldY,
+        transition,
+        morph,
+        globeOpacity: getGlobeOpacity(transition),
+        planeOpacity: getFlatOverviewOpacity(transition),
+        chunkOpacity: getStreamedChunkOpacity(transition),
+        visibleMapSquareRadius: nextView.visibleMapSquareRadius
+      });
+    }
     const previous = lastView.current;
 
     if (
@@ -551,12 +637,10 @@ function useSceneView(manifest: OsrsSceneManifest | null) {
 
 function StreamedSceneChunks({
   manifest,
-  view,
-  onVisibleChunkCount
+  view
 }: {
   manifest: OsrsSceneManifest;
   view: SceneView;
-  onVisibleChunkCount: (count: number) => void;
 }) {
   const [chunks, setChunks] = useState<Map<string, LoadedChunk>>(() => new Map());
   const [loading, setLoading] = useState<Set<string>>(() => new Set());
@@ -569,7 +653,7 @@ function StreamedSceneChunks({
     [manifest.chunks]
   );
   const lod = useMemo(() => getLod(manifest), [manifest]);
-  const closeBlend = 1 - MathUtils.smoothstep(view.distance, lod.closeDistance * 0.7, lod.planeDistance * 0.58);
+  const closeBlend = getStreamedChunkOpacity(getProjectionTransition(view.distance, manifest.bounds, lod));
   const radius = view.visibleMapSquareRadius;
 
   const wantedKeys = useMemo(() => {
@@ -656,7 +740,12 @@ function StreamedSceneChunks({
 
   useEffect(() => {
     const sortedKeys = sortWantedChunksByDistance(wantedKeys, view.chunkPriorityCenter, assetsByKey);
+    let availableLoadSlots = Math.max(0, MAX_CONCURRENT_CHUNK_LOADS - loadingRef.current.size);
     for (const key of sortedKeys) {
+      if (availableLoadSlots <= 0) {
+        break;
+      }
+
       if (chunksRef.current.has(key) || loadingRef.current.has(key)) {
         continue;
       }
@@ -671,6 +760,7 @@ function StreamedSceneChunks({
         loadingRef.current = next;
         return next;
       });
+      availableLoadSlots -= 1;
       loadChunk(asset)
         .then((chunk) => {
           setChunks((current) => {
@@ -685,6 +775,10 @@ function StreamedSceneChunks({
           });
         })
         .catch((error: unknown) => {
+          if (error instanceof TypeError && error.message === "Failed to fetch") {
+            return;
+          }
+
           console.error(error);
         })
         .finally(() => {
@@ -697,10 +791,6 @@ function StreamedSceneChunks({
         });
     }
   }, [assetsByKey, view.chunkPriorityCenter, wantedKeys]);
-
-  useEffect(() => {
-    onVisibleChunkCount(closeBlend > 0.01 ? chunks.size : 0);
-  }, [chunks.size, closeBlend, onVisibleChunkCount]);
 
   if (closeBlend <= 0.01 || chunks.size === 0) {
     return null;
@@ -719,7 +809,6 @@ function StreamedSceneChunks({
 
 export function OsrsCacheScene({ onManifest }: OsrsCacheSceneProps) {
   const [manifest, setManifest] = useState<OsrsSceneManifest | null>(null);
-  const [visibleChunkCount, setVisibleChunkCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const selectedPinId = useMapStore((state) => state.selectedPinId);
   const view = useSceneView(manifest);
@@ -762,9 +851,8 @@ export function OsrsCacheScene({ onManifest }: OsrsCacheSceneProps) {
 
   return (
     <group>
-      <GlobeMapLOD manifest={manifest} view={view} keepCloseFallback={visibleChunkCount === 0} />
-      <PlaneOverviewTiles manifest={manifest} view={view} />
-      <StreamedSceneChunks manifest={manifest} view={view} onVisibleChunkCount={setVisibleChunkCount} />
+      <OverviewMapLOD manifest={manifest} view={view} />
+      <StreamedSceneChunks manifest={manifest} view={view} />
     </group>
   );
 }

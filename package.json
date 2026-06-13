@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "generate:terrain": "tsx scripts/generate-mock-terrain.ts",
-    "generate:osrs-cache-scene": "tsx scripts/generate-osrs-cache-scene.ts"
+    "generate:osrs-cache-scene": "tsx scripts/generate-osrs-cache-scene.ts",
+    "stitch:overview": "tsx scripts/stitch-overview-texture.ts",
+    "verify:projection": "tsx scripts/verify-projection-roundtrip.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

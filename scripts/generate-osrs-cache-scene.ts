@@ -664,7 +664,7 @@ async function exportScene() {
     },
     overview: {
       globeTexture: "overview/globe/0/0_0.png",
-      planeTexture: overviewTiles[0]?.texture ?? "overview/globe/0/0_0.png",
+      planeTexture: "overview/globe/0/0_0.png",
     },
     texturePyramid: {
       atlas: "overview/globe/0/0_0.png",
@@ -684,6 +684,7 @@ async function exportScene() {
       radius: Math.max((mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE, (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE) * 0.48,
       worldWidth: (mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE,
       worldDepth: (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE,
+      latitudeLimit: Math.PI * 0.47,
     },
     validMapSquares,
     lod: {

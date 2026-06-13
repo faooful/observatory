@@ -53,11 +53,13 @@ export function MapScene() {
     () => [3244.43 - activeBounds.centerX, 0, -(2901.82 - activeBounds.centerY)],
     [activeBounds.centerX, activeBounds.centerY]
   );
+  const activeWorldTarget = useMemo(() => ({ x: 3244.43, y: 2901.82 }), []);
   const activeRadius = Math.max(activeBounds.width, activeBounds.depth);
 
   return (
     <div className="map-canvas">
       <Canvas
+        style={{ width: "100%", height: "100%" }}
         camera={{
           position: [
             activeTarget[0] + activeRadius * 0.62,
@@ -79,7 +81,14 @@ export function MapScene() {
         <directionalLight position={[-120, 90, -80]} intensity={0.52} color="#8db7c1" />
         <OsrsCacheScene onManifest={setManifest} />
         <CameraClip far={activeRadius * 12} />
-        <CameraRig bounds={activeBounds} pins={activityPins} defaultTarget={activeTarget} />
+        <CameraRig
+          bounds={activeBounds}
+          pins={activityPins}
+          defaultTarget={activeTarget}
+          defaultWorldTarget={activeWorldTarget}
+          projection={manifest?.projection}
+          lod={manifest?.lod}
+        />
       </Canvas>
     </div>
   );

@@ -43,6 +43,11 @@ button {
   inset: 0;
 }
 
+.map-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
 .title-lockup {
   position: absolute;
   top: 28px;

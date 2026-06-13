@@ -21,6 +21,7 @@ export type OsrsMapSquareAsset = {
 export type OsrsOverviewAsset = {
   globeTexture: string;
   planeTexture: string;
+  fullTexture?: string;
 };
 
 export type OsrsOverviewTile = {
@@ -54,6 +55,7 @@ export type OsrsProjectionSettings = {
   radius: number;
   worldWidth: number;
   worldDepth: number;
+  latitudeLimit?: number;
 };
 
 export type OsrsSceneLodThresholds = {
