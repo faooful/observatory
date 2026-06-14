@@ -194,8 +194,9 @@ button {
   pointer-events: none;
 }
 
-.hud-grid--active .hud-panel,
-.hud-grid--active .account-bar {
+.hud-grid--active .activity-dock,
+.hud-grid--active .account-bar,
+.hud-grid--active .locate-command {
   pointer-events: auto;
 }
 
@@ -275,63 +276,265 @@ button {
   color: #f2f2f3;
 }
 
-.hud-panel {
+.locate-command {
   position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  justify-self: start;
+  display: grid;
+  grid-template-columns: minmax(160px, 260px) auto;
+  gap: 8px;
+  margin-left: 260px;
   pointer-events: auto;
+}
+
+.locate-command input,
+.locate-command button {
+  min-height: 42px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: linear-gradient(180deg, var(--panel), var(--panel-strong));
-  box-shadow: 0 12px 38px rgba(0, 0, 0, 0.24);
+  color: var(--text);
+}
+
+.locate-command input {
+  min-width: 0;
+  padding: 0 12px;
+  outline: none;
+  background: rgba(11, 11, 12, 0.88);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(12px);
 }
 
-.hud-panel--intro {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: start;
-  max-width: min(100%, 620px);
-  padding: 18px;
+.locate-command input:focus {
+  border-color: rgba(217, 184, 108, 0.48);
 }
 
-.hud-panel--upper-right {
+.locate-command > button {
+  min-width: 48px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.locate-command > button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.locate-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  background: rgba(11, 11, 12, 0.94);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(14px);
+}
+
+.locate-results button {
+  display: grid;
+  gap: 3px;
+  min-height: 42px;
+  padding: 7px 9px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: left;
+}
+
+.locate-results button:hover {
+  border-color: rgba(217, 184, 108, 0.4);
+  background: rgba(217, 184, 108, 0.08);
+}
+
+.locate-results span,
+.locate-results small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locate-results span {
+  color: #f2f2f3;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.locate-results small {
+  color: #858892;
+  font-size: 0.68rem;
+}
+
+.activity-dock {
+  position: relative;
   grid-column: 2;
-  grid-row: 1;
-  align-self: start;
-  padding: 0;
-}
-
-.hud-panel--lower-left {
-  grid-column: 1;
-  grid-row: 2;
-  align-self: end;
-  justify-self: start;
-  margin-left: 42px;
-  width: min(calc(100% - 42px), 378px);
-  padding: 0;
-}
-
-.hud-panel--lower-left.is-collapsed {
-  width: min(calc(100% - 42px), 378px);
-}
-
-.hud-panel--lower-right {
-  grid-column: 2;
-  grid-row: 2;
-  align-self: end;
+  grid-row: 1 / span 2;
+  align-self: center;
   justify-self: end;
-  width: 100%;
-  padding: 0;
+  display: grid;
+  width: min(360px, calc(100vw - 112px));
+  margin-right: 58px;
+  max-height: min(680px, calc(100vh - 64px));
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-strong));
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(16px);
 }
 
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.activity-dock::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(145deg, rgba(217, 184, 108, 0.06), transparent 34%),
+    linear-gradient(315deg, rgba(94, 106, 210, 0.05), transparent 42%);
+  content: "";
+  pointer-events: none;
+}
+
+.activity-dock.is-closed {
+  display: grid;
+  width: 48px;
+  margin-right: 58px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.activity-dock.is-closed::before {
+  display: none;
+}
+
+.activity-dock.is-closed .activity-dock-tabs {
+  right: -57px;
+}
+
+.activity-dock-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
 }
 
-.sidebar-header--compact {
-  margin-bottom: 14px;
+.activity-dock-header,
+.activity-dock .pin-list {
+  position: relative;
+  z-index: 1;
+}
+
+.activity-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid var(--border);
+  margin: -16px -16px 0;
+  padding: 15px 16px;
+}
+
+.activity-dock-header div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.activity-dock-header span {
+  color: #858892;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.activity-dock-header strong {
+  overflow: hidden;
+  color: #f2f2f3;
+  font-size: 1.02rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-dock-header small {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #a8aab0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.activity-dock .pin-list {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.activity-dock-tabs {
+  position: absolute;
+  top: 50%;
+  right: -58px;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  width: 48px;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px;
+  background: rgba(6, 7, 8, 0.9);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(14px);
+}
+
+.activity-dock-tabs button {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #8b8d92;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.activity-dock-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.72;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
+}
+
+.activity-dock-tabs button:hover,
+.activity-dock-tabs button.is-active {
+  border-color: rgba(217, 184, 108, 0.42);
+  background: rgba(217, 184, 108, 0.1);
+  color: #e8d39b;
+}
+
+.activity-dock-tabs button:hover .activity-dock-icon,
+.activity-dock-tabs button.is-active .activity-dock-icon {
+  opacity: 1;
 }
 
 .sidebar h2,
@@ -354,6 +557,13 @@ button {
 .sidebar h3 {
   font-size: 0.95rem;
   color: #d5e5e1;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .type-badge {
@@ -426,57 +636,6 @@ button {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
-}
-
-.panel-toggle {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 0;
-  min-height: 48px;
-  padding: 12px 14px;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.panel-toggle span:first-child {
-  display: grid;
-  min-width: 0;
-}
-
-.panel-toggle strong {
-  overflow: hidden;
-  color: #a8aab0;
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.panel-caret {
-  display: inline-grid;
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  place-items: center;
-  color: #858892;
-  font-size: 0.7rem;
-  transform: translateY(1px);
-}
-
-.hud-panel.is-collapsed .panel-caret {
-  transform: rotate(-90deg) translateX(-1px);
-}
-
-.panel-content {
-  display: grid;
-  gap: 10px;
-  padding: 0 10px 10px;
 }
 
 .panel-property-row {
@@ -994,14 +1153,37 @@ button {
     padding-bottom: 8px;
   }
 
-  .hud-panel--intro,
-  .hud-panel--upper-right,
-  .hud-panel--lower-left,
-  .hud-panel--lower-right,
-  .account-bar {
+  .account-bar,
+  .locate-command,
+  .activity-dock {
     grid-column: auto;
     grid-row: auto;
     max-width: none;
+  }
+
+  .activity-dock {
+    width: 100%;
+    margin-right: 0;
+    max-height: none;
+    align-self: start;
+  }
+
+  .activity-dock-tabs {
+    position: static;
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    transform: none;
+    border-radius: 8px;
+  }
+
+  .activity-dock-tabs button {
+    width: 100%;
+  }
+
+  .locate-command {
+    grid-template-columns: minmax(0, 1fr) auto;
+    margin-left: 0;
   }
 
   .stat-grid {

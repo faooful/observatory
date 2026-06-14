@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MetricPill } from "@/components/MetricPill";
 import { getActivities, getVisibleActivities, sortRecommendations } from "@/lib/activities/activityModel";
 import type { Activity, ActivityType } from "@/lib/activities/types";
@@ -9,8 +9,6 @@ import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
 const MAX_HISTORY = 5;
-const PANEL_ACTIVITY_LIMIT = 4;
-type PanelId = ActivityType;
 
 const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   quest: "Quests",
@@ -18,33 +16,11 @@ const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   boss: "Bosses"
 };
 
-function CollapsiblePanel({
-  children,
-  className,
-  collapsed,
-  onToggle,
-  title
-}: {
-  children: ReactNode;
-  className: string;
-  collapsed: boolean;
-  onToggle: () => void;
-  title: string;
-}) {
-  return (
-    <section className={`hud-panel ${className}${collapsed ? " is-collapsed" : ""}`}>
-      <button className="panel-toggle" type="button" onClick={onToggle} aria-expanded={!collapsed}>
-        <span>
-          <strong>{title}</strong>
-        </span>
-        <span className="panel-caret" aria-hidden="true">
-          v
-        </span>
-      </button>
-      {!collapsed ? <div className="panel-content">{children}</div> : null}
-    </section>
-  );
-}
+const ACTIVITY_PANEL_ICONS: Record<ActivityType, string> = {
+  quest: "/osrs-icons/quest-start.png",
+  money: "/osrs-icons/coins-10000.png",
+  boss: "/osrs-icons/combat.png"
+};
 
 function readHistory() {
   if (typeof window === "undefined") {
@@ -82,10 +58,28 @@ function writeHistory(username: string) {
   window.localStorage.setItem(HISTORY_KEY, JSON.stringify(nextHistory));
 }
 
+function isActivityType(value: string | null): value is ActivityType {
+  return value === "quest" || value === "money" || value === "boss";
+}
+
+function parseWorldCoordinates(value: string) {
+  const match = value.trim().match(/^([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)$/);
+  if (!match) {
+    return null;
+  }
+
+  const x = Number(match[1]);
+  const y = Number(match[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+
+  return { x, y };
+}
+
 function ActivityList({ activities }: { activities: Activity[] }) {
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
-  const selectActivity = useMapStore((state) => state.selectActivity);
-  const setActiveLayer = useMapStore((state) => state.setActiveLayer);
+  const focusActivity = useMapStore((state) => state.focusActivity);
 
   return (
     <div className="pin-list activity-list">
@@ -94,10 +88,7 @@ function ActivityList({ activities }: { activities: Activity[] }) {
           className={`pin-button is-${activity.status}${activity.id === selectedActivityId ? " is-active" : ""}`}
           key={activity.id}
           type="button"
-          onClick={() => {
-            setActiveLayer(activity.type);
-            selectActivity(activity.id);
-          }}
+          onClick={() => focusActivity(activity)}
         >
           <span>
             <strong>{activity.title}</strong>
@@ -110,28 +101,162 @@ function ActivityList({ activities }: { activities: Activity[] }) {
   );
 }
 
+function LocateCommand({ activities }: { activities: Activity[] }) {
+  const [query, setQuery] = useState("");
+  const focusActivity = useMapStore((state) => state.focusActivity);
+  const focusLocation = useMapStore((state) => state.focusLocation);
+  const coordinateResult = useMemo(() => parseWorldCoordinates(query), [query]);
+  const results = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle || coordinateResult) {
+      return [];
+    }
+
+    return activities
+      .filter((activity) => {
+        const haystack = `${activity.title} ${activity.locationName} ${activity.type}`.toLowerCase();
+        return haystack.includes(needle);
+      })
+      .slice(0, 6);
+  }, [activities, coordinateResult, query]);
+
+  const chooseActivity = (activity: Activity) => {
+    focusActivity(activity);
+    setQuery("");
+  };
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (coordinateResult) {
+      focusLocation({
+        x: coordinateResult.x,
+        y: coordinateResult.y,
+        label: `${coordinateResult.x}, ${coordinateResult.y}`
+      });
+      setQuery("");
+      return;
+    }
+
+    if (results[0]) {
+      chooseActivity(results[0]);
+    }
+  };
+
+  return (
+    <form className="locate-command" onSubmit={submit}>
+      <label className="sr-only" htmlFor="activity-locate">
+        Locate activity or world coordinates
+      </label>
+      <input
+        autoComplete="off"
+        id="activity-locate"
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Find or x,y"
+        value={query}
+      />
+      <button type="submit" disabled={!coordinateResult && results.length === 0}>
+        Go
+      </button>
+      {(coordinateResult || results.length > 0) && (
+        <div className="locate-results">
+          {coordinateResult ? (
+            <button
+              type="button"
+              onClick={() => {
+                focusLocation({ ...coordinateResult, label: `${coordinateResult.x}, ${coordinateResult.y}` });
+                setQuery("");
+              }}
+            >
+              <span>{coordinateResult.x}, {coordinateResult.y}</span>
+              <small>World coordinate</small>
+            </button>
+          ) : (
+            results.map((activity) => (
+              <button key={activity.id} type="button" onClick={() => chooseActivity(activity)}>
+                <span>{activity.title}</span>
+                <small>{activity.locationName} / {ACTIVITY_PANEL_LABELS[activity.type]}</small>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </form>
+  );
+}
+
+function ActivityDock({
+  activeLayer,
+  activitiesByLayer,
+  dockOpen,
+  onSelectLayer
+}: {
+  activeLayer: ActivityType;
+  activitiesByLayer: Record<ActivityType, Activity[]>;
+  dockOpen: boolean;
+  onSelectLayer: (layer: ActivityType) => void;
+}) {
+  const activeActivities = activitiesByLayer[activeLayer];
+  const totalCount = activeActivities.length;
+
+  return (
+    <section className={`activity-dock${dockOpen ? "" : " is-closed"}`} aria-label="Activity layers">
+      {dockOpen && (
+        <div className="activity-dock-body">
+          <div className="activity-dock-header">
+            <div>
+              <span>Activities</span>
+              <strong>{ACTIVITY_PANEL_LABELS[activeLayer]}</strong>
+            </div>
+            <small>{totalCount} total</small>
+          </div>
+          <ActivityList activities={activeActivities} />
+        </div>
+      )}
+      <nav className="activity-dock-tabs" aria-label="Switch activity layer">
+        {(["quest", "money", "boss"] as ActivityType[]).map((layer) => (
+          <button
+            aria-label={dockOpen && activeLayer === layer ? `Close ${ACTIVITY_PANEL_LABELS[layer]}` : ACTIVITY_PANEL_LABELS[layer]}
+            className={dockOpen && activeLayer === layer ? "is-active" : ""}
+            key={layer}
+            onClick={() => onSelectLayer(layer)}
+            title={ACTIVITY_PANEL_LABELS[layer]}
+            type="button"
+          >
+            <img alt="" aria-hidden="true" className="activity-dock-icon" src={ACTIVITY_PANEL_ICONS[layer]} />
+          </button>
+        ))}
+      </nav>
+    </section>
+  );
+}
+
 export function ActivitySidebar() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [collapsedPanels, setCollapsedPanels] = useState<Record<PanelId, boolean>>({
-    quest: false,
-    money: false,
-    boss: false
-  });
+  const [dockOpen, setDockOpen] = useState(true);
+  const [pendingActivityId, setPendingActivityId] = useState<string | null>(null);
+  const activeLayer = useMapStore((state) => state.activeLayer);
+  const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const resetView = useMapStore((state) => state.resetView);
   const player = useMapStore((state) => state.player);
   const setPlayer = useMapStore((state) => state.setPlayer);
+  const setActiveLayer = useMapStore((state) => state.setActiveLayer);
+  const focusActivity = useMapStore((state) => state.focusActivity);
   const activities = useMemo(() => getActivities({ player }), [player]);
   const questActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "quest")) : []), [activities, player]);
   const moneyActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "money")) : []), [activities, player]);
   const bossActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "boss")) : []), [activities, player]);
+  const activitiesByLayer = useMemo<Record<ActivityType, Activity[]>>(
+    () => ({
+      quest: questActivities,
+      money: moneyActivities,
+      boss: bossActivities
+    }),
+    [bossActivities, moneyActivities, questActivities]
+  );
   const completedQuestCount = useMemo(() => Object.values(player?.quests ?? {}).filter((state) => state === 2).length, [player?.quests]);
-
-  useEffect(() => {
-    const nextHistory = readHistory();
-    setUsername((current) => current || nextHistory[0] || "");
-  }, []);
 
   const updateHistory = (nextUsername: string) => {
     writeHistory(nextUsername);
@@ -170,48 +295,91 @@ export function ActivitySidebar() {
     await lookupPlayer(username);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const playerParam = params.get("player");
+    const layerParam = params.get("layer");
+    const activityParam = params.get("activity");
+
+    if (isActivityType(layerParam)) {
+      setActiveLayer(layerParam);
+    }
+
+    if (activityParam) {
+      setPendingActivityId(activityParam);
+    }
+
+    if (playerParam) {
+      setUsername(playerParam);
+      void lookupPlayer(playerParam);
+      return;
+    }
+
+    const nextHistory = readHistory();
+    setUsername((current) => current || nextHistory[0] || "");
+  }, []);
+
+  useEffect(() => {
+    if (!pendingActivityId || !player) {
+      return;
+    }
+
+    const pendingActivity = activities.find((activity) => activity.id === pendingActivityId);
+    if (pendingActivity) {
+      focusActivity(pendingActivity);
+    }
+    setPendingActivityId(null);
+  }, [activities, focusActivity, pendingActivityId, player]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !player) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("player", player.username);
+    params.set("layer", activeLayer);
+    if (selectedActivityId) {
+      params.set("activity", selectedActivityId);
+    } else {
+      params.delete("activity");
+    }
+
+    const query = params.toString();
+    const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    if (`${window.location.pathname}${window.location.search}` !== nextUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [activeLayer, player, selectedActivityId]);
+
   const returnToLookup = () => {
     setError(null);
     setPlayer(null);
     resetView();
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("player");
+      params.delete("layer");
+      params.delete("activity");
+      const query = params.toString();
+      window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+    }
   };
 
-  const togglePanel = (panelId: PanelId) => {
-    setCollapsedPanels((current) => ({
-      ...current,
-      [panelId]: !current[panelId]
-    }));
-  };
+  const selectDockLayer = (layer: ActivityType) => {
+    if (dockOpen && layer === activeLayer) {
+      setDockOpen(false);
+      return;
+    }
 
-  const renderActivityPanel = ({
-    activities: panelActivities,
-    className,
-    type
-  }: {
-    activities: Activity[];
-    className: string;
-    type: ActivityType;
-  }) => {
-    const readyCount = panelActivities.filter((activity) => activity.status === "ready").length;
-    const blockedCount = panelActivities.filter((activity) => activity.status === "blocked").length;
-    const visibleActivities = panelActivities.slice(0, PANEL_ACTIVITY_LIMIT);
-
-    return (
-      <CollapsiblePanel
-        className={className}
-        collapsed={collapsedPanels[type]}
-        onToggle={() => togglePanel(type)}
-        title={ACTIVITY_PANEL_LABELS[type]}
-      >
-        <div className="panel-property-row">
-          <span>Available</span>
-          <strong>
-            {readyCount} ready / {blockedCount} blocked
-          </strong>
-        </div>
-        <ActivityList activities={visibleActivities} />
-      </CollapsiblePanel>
-    );
+    setDockOpen(true);
+    if (layer !== activeLayer) {
+      setActiveLayer(layer);
+    }
   };
 
   return (
@@ -262,10 +430,9 @@ export function ActivitySidebar() {
               Change
             </button>
           </header>
+          <LocateCommand activities={activities} />
 
-          {renderActivityPanel({ activities: questActivities, className: "hud-panel--upper-right", type: "quest" })}
-          {renderActivityPanel({ activities: moneyActivities, className: "hud-panel--lower-left", type: "money" })}
-          {renderActivityPanel({ activities: bossActivities, className: "hud-panel--lower-right", type: "boss" })}
+          <ActivityDock activeLayer={activeLayer} activitiesByLayer={activitiesByLayer} dockOpen={dockOpen} onSelectLayer={selectDockLayer} />
         </div>
       )}
     </aside>

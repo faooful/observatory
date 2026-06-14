@@ -394,7 +394,7 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
   const group = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
-  const selectActivity = useMapStore((state) => state.selectActivity);
+  const focusActivity = useMapStore((state) => state.focusActivity);
   const selected = selectedActivityId === activity.id;
   const color = activity.status === "blocked" ? "#7b858d" : activity.type === "boss" ? "#f06b6b" : activity.type === "money" ? "#63d7a6" : "#79a7ff";
   const point = useRef(new Vector3());
@@ -426,7 +426,7 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
       ref={group}
       onClick={(event) => {
         event.stopPropagation();
-        selectActivity(activity.id);
+        focusActivity(activity);
       }}
       onPointerEnter={(event) => {
         event.stopPropagation();

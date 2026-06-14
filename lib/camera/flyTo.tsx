@@ -176,6 +176,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   const wheelHits = useRef(0);
   const wheelFallbacks = useRef(0);
   const selectedPinId = useMapStore((state) => state.selectedPinId);
+  const focusRequest = useMapStore((state) => state.focusRequest);
   const viewVersion = useMapStore((state) => state.viewVersion);
   const activeRadius = Math.max(bounds.width, bounds.depth);
   const initialGlobeSurfacePoint = useMemo(() => {
@@ -372,15 +373,17 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   }, [activeRadius, camera]);
 
   useEffect(() => {
-    if (!selectedPin) {
+    const focusTarget = focusRequest ?? selectedPin;
+
+    if (!focusTarget) {
       flyTo(initialPosition, initialTarget, true);
       return;
     }
 
-    const target = mapWorldToSurface(selectedPin.x, selectedPin.y, bounds, projection, 1).setY(1.4);
+    const target = mapWorldToSurface(focusTarget.x, focusTarget.y, bounds, projection, 1).setY(1.4);
     const position = target.clone().add(new Vector3(0, 242, 164));
     flyTo(position, target, true);
-  }, [bounds, flyTo, initialPosition, initialTarget, projection, selectedPin, viewVersion]);
+  }, [bounds, flyTo, focusRequest, initialPosition, initialTarget, projection, selectedPin, viewVersion]);
 
   useLayoutEffect(() => {
     flyTo(initialPosition, initialTarget, false);
