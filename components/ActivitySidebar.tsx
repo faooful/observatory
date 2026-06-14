@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { MetricPill } from "@/components/MetricPill";
 import { getActivities, getVisibleActivities, sortRecommendations } from "@/lib/activities/activityModel";
 import type { Activity, ActivityType } from "@/lib/activities/types";
@@ -9,8 +9,6 @@ import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
 const MAX_HISTORY = 5;
-const PANEL_ACTIVITY_LIMIT = 4;
-type PanelId = ActivityType;
 
 const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   quest: "Quests",
@@ -18,33 +16,11 @@ const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   boss: "Bosses"
 };
 
-function CollapsiblePanel({
-  children,
-  className,
-  collapsed,
-  onToggle,
-  title
-}: {
-  children: ReactNode;
-  className: string;
-  collapsed: boolean;
-  onToggle: () => void;
-  title: string;
-}) {
-  return (
-    <section className={`hud-panel ${className}${collapsed ? " is-collapsed" : ""}`}>
-      <button className="panel-toggle" type="button" onClick={onToggle} aria-expanded={!collapsed}>
-        <span>
-          <strong>{title}</strong>
-        </span>
-        <span className="panel-caret" aria-hidden="true">
-          v
-        </span>
-      </button>
-      {!collapsed ? <div className="panel-content">{children}</div> : null}
-    </section>
-  );
-}
+const ACTIVITY_PANEL_SHORT_LABELS: Record<ActivityType, string> = {
+  quest: "Q",
+  money: "$",
+  boss: "B"
+};
 
 function readHistory() {
   if (typeof window === "undefined") {
@@ -209,16 +185,63 @@ function LocateCommand({ activities }: { activities: Activity[] }) {
   );
 }
 
+function ActivityDock({
+  activeLayer,
+  activitiesByLayer,
+  onSelectLayer
+}: {
+  activeLayer: ActivityType;
+  activitiesByLayer: Record<ActivityType, Activity[]>;
+  onSelectLayer: (layer: ActivityType) => void;
+}) {
+  const activeActivities = activitiesByLayer[activeLayer];
+  const readyCount = activeActivities.filter((activity) => activity.status === "ready").length;
+  const blockedCount = activeActivities.filter((activity) => activity.status === "blocked").length;
+  const totalCount = activeActivities.length;
+
+  return (
+    <section className="activity-dock" aria-label="Activity layers">
+      <div className="activity-dock-header">
+        <div>
+          <span>Activities</span>
+          <strong>{ACTIVITY_PANEL_LABELS[activeLayer]}</strong>
+        </div>
+        <small>{totalCount} total</small>
+      </div>
+      <div className="activity-dock-summary">
+        <div>
+          <span>Ready</span>
+          <strong>{readyCount}</strong>
+        </div>
+        <div>
+          <span>Blocked</span>
+          <strong>{blockedCount}</strong>
+        </div>
+      </div>
+      <ActivityList activities={activeActivities} />
+      <nav className="activity-dock-tabs" aria-label="Switch activity layer">
+        {(["quest", "money", "boss"] as ActivityType[]).map((layer) => (
+          <button
+            aria-label={ACTIVITY_PANEL_LABELS[layer]}
+            className={activeLayer === layer ? "is-active" : ""}
+            key={layer}
+            onClick={() => onSelectLayer(layer)}
+            title={ACTIVITY_PANEL_LABELS[layer]}
+            type="button"
+          >
+            <span aria-hidden="true">{ACTIVITY_PANEL_SHORT_LABELS[layer]}</span>
+          </button>
+        ))}
+      </nav>
+    </section>
+  );
+}
+
 export function ActivitySidebar() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingActivityId, setPendingActivityId] = useState<string | null>(null);
-  const [collapsedPanels, setCollapsedPanels] = useState<Record<PanelId, boolean>>({
-    quest: false,
-    money: false,
-    boss: false
-  });
   const activeLayer = useMapStore((state) => state.activeLayer);
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const resetView = useMapStore((state) => state.resetView);
@@ -230,6 +253,14 @@ export function ActivitySidebar() {
   const questActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "quest")) : []), [activities, player]);
   const moneyActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "money")) : []), [activities, player]);
   const bossActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "boss")) : []), [activities, player]);
+  const activitiesByLayer = useMemo<Record<ActivityType, Activity[]>>(
+    () => ({
+      quest: questActivities,
+      money: moneyActivities,
+      boss: bossActivities
+    }),
+    [bossActivities, moneyActivities, questActivities]
+  );
   const completedQuestCount = useMemo(() => Object.values(player?.quests ?? {}).filter((state) => state === 2).length, [player?.quests]);
 
   const updateHistory = (nextUsername: string) => {
@@ -344,44 +375,6 @@ export function ActivitySidebar() {
     }
   };
 
-  const togglePanel = (panelId: PanelId) => {
-    setCollapsedPanels((current) => ({
-      ...current,
-      [panelId]: !current[panelId]
-    }));
-  };
-
-  const renderActivityPanel = ({
-    activities: panelActivities,
-    className,
-    type
-  }: {
-    activities: Activity[];
-    className: string;
-    type: ActivityType;
-  }) => {
-    const readyCount = panelActivities.filter((activity) => activity.status === "ready").length;
-    const blockedCount = panelActivities.filter((activity) => activity.status === "blocked").length;
-    const visibleActivities = panelActivities.slice(0, PANEL_ACTIVITY_LIMIT);
-
-    return (
-      <CollapsiblePanel
-        className={className}
-        collapsed={collapsedPanels[type]}
-        onToggle={() => togglePanel(type)}
-        title={ACTIVITY_PANEL_LABELS[type]}
-      >
-        <div className="panel-property-row">
-          <span>Available</span>
-          <strong>
-            {readyCount} ready / {blockedCount} blocked
-          </strong>
-        </div>
-        <ActivityList activities={visibleActivities} />
-      </CollapsiblePanel>
-    );
-  };
-
   return (
     <aside className="sidebar overlay-shell" aria-label="Observatory controls">
       {!player ? (
@@ -432,9 +425,7 @@ export function ActivitySidebar() {
           </header>
           <LocateCommand activities={activities} />
 
-          {renderActivityPanel({ activities: questActivities, className: "hud-panel--upper-right", type: "quest" })}
-          {renderActivityPanel({ activities: moneyActivities, className: "hud-panel--lower-left", type: "money" })}
-          {renderActivityPanel({ activities: bossActivities, className: "hud-panel--lower-right", type: "boss" })}
+          <ActivityDock activeLayer={activeLayer} activitiesByLayer={activitiesByLayer} onSelectLayer={setActiveLayer} />
         </div>
       )}
     </aside>
