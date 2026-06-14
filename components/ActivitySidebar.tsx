@@ -16,10 +16,10 @@ const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   boss: "Bosses"
 };
 
-const ACTIVITY_PANEL_SHORT_LABELS: Record<ActivityType, string> = {
-  quest: "Q",
-  money: "$",
-  boss: "B"
+const ACTIVITY_PANEL_ICONS: Record<ActivityType, string> = {
+  quest: "/osrs-icons/quest-start.png",
+  money: "/osrs-icons/coins-10000.png",
+  boss: "/osrs-icons/combat.png"
 };
 
 function readHistory() {
@@ -223,7 +223,7 @@ function ActivityDock({
             title={ACTIVITY_PANEL_LABELS[layer]}
             type="button"
           >
-            <span aria-hidden="true">{ACTIVITY_PANEL_SHORT_LABELS[layer]}</span>
+            <img alt="" aria-hidden="true" className="activity-dock-icon" src={ACTIVITY_PANEL_ICONS[layer]} />
           </button>
         ))}
       </nav>

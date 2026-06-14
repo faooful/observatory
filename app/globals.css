@@ -516,11 +516,25 @@ button {
   font-weight: 800;
 }
 
+.activity-dock-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  opacity: 0.72;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
+}
+
 .activity-dock-tabs button:hover,
 .activity-dock-tabs button.is-active {
   border-color: rgba(217, 184, 108, 0.42);
   background: rgba(217, 184, 108, 0.1);
   color: #e8d39b;
+}
+
+.activity-dock-tabs button:hover .activity-dock-icon,
+.activity-dock-tabs button.is-active .activity-dock-icon {
+  opacity: 1;
 }
 
 .sidebar h2,
