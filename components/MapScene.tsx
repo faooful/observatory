@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import pins from "@/data/activities/osrs-pins.json";
 import { CameraRig } from "@/lib/camera/flyTo";
+import { getActivities, getVisibleActivities } from "@/lib/activities/activityModel";
 import type { OsrsSceneManifest } from "@/lib/osrs-scene/types";
+import { useMapStore } from "@/lib/store/useMapStore";
 import type { TerrainBounds } from "@/lib/terrain/loadTerrain";
-import type { ActivityPin } from "@/lib/terrain/types";
 import { OsrsCacheScene } from "./OsrsCacheScene";
 
-const activityPins = pins as ActivityPin[];
 const sceneBounds: TerrainBounds = {
   minX: 3072,
   maxX: 3456,
@@ -46,8 +45,22 @@ function CameraClip({ far }: { far: number }) {
   return null;
 }
 
+type ActivityDebugWindow = Window & {
+  __OBSERVATORY_ACTIVITY_MARKERS__?: {
+    activeLayer: string;
+    ids: string[];
+    count: number;
+  };
+};
+
 export function MapScene() {
   const [manifest, setManifest] = useState<OsrsSceneManifest | null>(null);
+  const player = useMapStore((state) => state.player);
+  const activeLayer = useMapStore((state) => state.activeLayer);
+  const visibleActivities = useMemo(
+    () => (player ? getVisibleActivities(getActivities({ player }), activeLayer) : []),
+    [activeLayer, player]
+  );
   const activeBounds = useMemo(() => (manifest ? getManifestBounds(manifest) : sceneBounds), [manifest]);
   const activeTarget = useMemo<[number, number, number]>(
     () => [3244.43 - activeBounds.centerX, 0, -(2901.82 - activeBounds.centerY)],
@@ -55,6 +68,20 @@ export function MapScene() {
   );
   const activeWorldTarget = useMemo(() => ({ x: 3244.43, y: 2901.82 }), []);
   const activeRadius = Math.max(activeBounds.width, activeBounds.depth);
+
+  useEffect(() => {
+    const snapshot = {
+      activeLayer,
+      ids: visibleActivities.map((activity) => activity.id),
+      count: visibleActivities.length
+    };
+    (window as ActivityDebugWindow).__OBSERVATORY_ACTIVITY_MARKERS__ = {
+      activeLayer: snapshot.activeLayer,
+      ids: snapshot.ids,
+      count: snapshot.count
+    };
+    document.documentElement.dataset.activityMarkers = JSON.stringify(snapshot);
+  }, [activeLayer, visibleActivities]);
 
   return (
     <div className="map-canvas">
@@ -83,7 +110,11 @@ export function MapScene() {
         <CameraClip far={activeRadius * 12} />
         <CameraRig
           bounds={activeBounds}
-          pins={activityPins}
+          pins={visibleActivities.map((activity) => ({
+            id: activity.id,
+            x: activity.location.x,
+            y: activity.location.y
+          }))}
           defaultTarget={activeTarget}
           defaultWorldTarget={activeWorldTarget}
           projection={manifest?.projection}

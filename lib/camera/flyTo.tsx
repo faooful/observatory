@@ -15,11 +15,16 @@ import {
 } from "@/lib/osrs-scene/projection";
 import type { OsrsWorldPoint } from "@/lib/osrs-scene/projection";
 import type { TerrainBounds } from "@/lib/terrain/loadTerrain";
-import type { ActivityPin } from "@/lib/terrain/types";
+
+type CameraPin = {
+  id: string;
+  x: number;
+  y: number;
+};
 
 type CameraRigProps = {
   bounds: TerrainBounds;
-  pins: ActivityPin[];
+  pins: CameraPin[];
   defaultTarget?: [number, number, number];
   defaultWorldTarget?: { x: number; y: number };
   projection?: OsrsProjectionSettings;
@@ -36,6 +41,8 @@ const MIN_FLIGHT_MS = 1250;
 const MAX_FLIGHT_MS = 2600;
 const WHEEL_ZOOM_SENSITIVITY = 0.00078;
 const MAX_WHEEL_ZOOM_STEP = 0.07;
+const IDLE_SPIN_DELAY_MS = 1100;
+const IDLE_SPIN_SPEED = 0.035;
 
 type CameraFlight = {
   startedAt: number;
@@ -434,7 +441,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
     };
   }, [enqueueWheelZoom, gl.domElement]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const currentControls = controls.current;
     if (!currentControls) {
       return;
@@ -559,6 +566,19 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
       0.92,
       MathUtils.smoothstep(distance, activeRadius * 0.42, activeRadius * 2.9)
     );
+
+    const canIdleSpin =
+      phase === "globe" &&
+      !selectedPin &&
+      !flight &&
+      Math.abs(wheelZoomDelta.current) < 0.0001 &&
+      !isUserControlling.current &&
+      !isProgrammaticFlight.current &&
+      performance.now() - lastControlAt.current > IDLE_SPIN_DELAY_MS;
+
+    if (canIdleSpin) {
+      void currentControls.rotate(IDLE_SPIN_SPEED * delta, 0, false);
+    }
 
     if (isGlobe || isUserControlling.current || performance.now() - lastControlAt.current < SETTLE_DELAY_MS) {
       lastSettledDistance.current = distance;

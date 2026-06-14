@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Html } from "@react-three/drei";
 import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import {
   BufferAttribute,
@@ -13,8 +14,12 @@ import {
   TextureLoader,
   Vector3
 } from "three";
+import type { Group } from "three";
 import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from "three";
 import type { CameraControlsImpl } from "@react-three/drei";
+import { type PlayerLookup } from "@/lib/osrs/player";
+import { getActivities, getVisibleActivities } from "@/lib/activities/activityModel";
+import type { Activity } from "@/lib/activities/types";
 import { useMapStore } from "@/lib/store/useMapStore";
 import type { OsrsMapSquareAsset, OsrsSceneManifest } from "@/lib/osrs-scene/types";
 import {
@@ -22,6 +27,7 @@ import {
   getProjectionMorph,
   getProjectionTransition,
   getSurfacePointFromUv,
+  mapWorldToSurface,
   surfaceToMapWorld
 } from "@/lib/osrs-scene/projection";
 
@@ -82,6 +88,11 @@ type ObservatoryDebugWindow = Window & {
     planeOpacity: number;
     chunkOpacity: number;
     visibleMapSquareRadius: number;
+  };
+  __OBSERVATORY_ACTIVITY_MARKERS__?: {
+    activeLayer: string;
+    ids: string[];
+    count: number;
   };
 };
 
@@ -322,9 +333,22 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
       positions[index * 3] = worldX - centerX;
       positions[index * 3 + 1] = worldHeight;
       positions[index * 3 + 2] = -(worldY - centerY);
-      colors[index * 3] = chunk.colors[index * 4];
-      colors[index * 3 + 1] = chunk.colors[index * 4 + 1];
-      colors[index * 3 + 2] = chunk.colors[index * 4 + 2];
+      const red = chunk.colors[index * 4];
+      const green = chunk.colors[index * 4 + 1];
+      const blue = chunk.colors[index * 4 + 2];
+      const isMissingTextureFallback = Math.abs(red - green) < 0.018 && Math.abs(green - blue) < 0.018;
+
+      if (isMissingTextureFallback) {
+        const terrainNoise = (Math.sin(worldX * 0.19 + worldY * 0.11) + Math.sin(worldX * 0.047 - worldY * 0.073)) * 0.5;
+        const warmth = MathUtils.clamp(red + terrainNoise * 0.055, 0.12, 0.86);
+        colors[index * 3] = warmth * 0.72;
+        colors[index * 3 + 1] = warmth * 0.82;
+        colors[index * 3 + 2] = warmth * 0.62;
+      } else {
+        colors[index * 3] = red;
+        colors[index * 3 + 1] = green;
+        colors[index * 3 + 2] = blue;
+      }
     }
 
     const nextGeometry = new BufferGeometry();
@@ -363,6 +387,96 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
         opacity={0}
       />
     </mesh>
+  );
+}
+
+function ActivityMarker({ activity, manifest, view }: { activity: Activity; manifest: OsrsSceneManifest; view: SceneView }) {
+  const group = useRef<Group>(null);
+  const [hovered, setHovered] = useState(false);
+  const selectedActivityId = useMapStore((state) => state.selectedActivityId);
+  const selectActivity = useMapStore((state) => state.selectActivity);
+  const selected = selectedActivityId === activity.id;
+  const color = activity.status === "blocked" ? "#7b858d" : activity.type === "boss" ? "#f06b6b" : activity.type === "money" ? "#63d7a6" : "#79a7ff";
+  const point = useRef(new Vector3());
+
+  useFrame(({ clock }) => {
+    if (!group.current) {
+      return;
+    }
+
+    const morph = getProjectionMorph(view.distance, manifest.bounds, manifest.lod);
+    mapWorldToSurface(activity.location.x, activity.location.y, manifest.bounds, manifest.projection, morph, OVERVIEW_PLANE_Y, point.current);
+    point.current.y += MathUtils.lerp(10, 34, morph);
+    group.current.position.copy(point.current);
+    group.current.scale.setScalar(MathUtils.lerp(1.65, 1, morph));
+    group.current.rotation.y = clock.elapsedTime * 0.6;
+  });
+
+  if (
+    activity.location.x < manifest.bounds.minX ||
+    activity.location.x > manifest.bounds.maxX ||
+    activity.location.y < manifest.bounds.minY ||
+    activity.location.y > manifest.bounds.maxY
+  ) {
+    return null;
+  }
+
+  return (
+    <group
+      ref={group}
+      onClick={(event) => {
+        event.stopPropagation();
+        selectActivity(activity.id);
+      }}
+      onPointerEnter={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerLeave={() => {
+        setHovered(false);
+        document.body.style.cursor = "";
+      }}
+    >
+      <mesh scale={selected || hovered ? 1.25 : 1}>
+        <octahedronGeometry args={[8, 0]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={selected || hovered ? 1.4 : 0.55} />
+      </mesh>
+      <mesh position={[0, -10, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[7, 10, 28]} />
+        <meshBasicMaterial color={color} transparent opacity={selected || hovered ? 0.42 : 0.22} side={DoubleSide} />
+      </mesh>
+      {(selected || hovered) && (
+        <Html position={[0, 18, 0]} center distanceFactor={38} style={{ pointerEvents: "none" }}>
+          <div className="marker-label">{activity.title}</div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+function ActivityMarkers({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
+  const player = useMapStore((state) => state.player);
+  const activeLayer = useMapStore((state) => state.activeLayer);
+  const visibleActivities = useMemo(
+    () => (player ? getVisibleActivities(getActivities({ player }), activeLayer) : []),
+    [activeLayer, player]
+  );
+
+  useEffect(() => {
+    (window as ObservatoryDebugWindow).__OBSERVATORY_ACTIVITY_MARKERS__ = {
+      activeLayer,
+      ids: visibleActivities.map((activity) => activity.id),
+      count: visibleActivities.length
+    };
+  }, [activeLayer, visibleActivities]);
+
+  return (
+    <group>
+      {visibleActivities.map((activity) => (
+        <ActivityMarker key={activity.id} activity={activity} manifest={manifest} view={view} />
+      ))}
+    </group>
   );
 }
 
@@ -852,6 +966,7 @@ export function OsrsCacheScene({ onManifest }: OsrsCacheSceneProps) {
   return (
     <group>
       <OverviewMapLOD manifest={manifest} view={view} />
+      <ActivityMarkers manifest={manifest} view={view} />
       <StreamedSceneChunks manifest={manifest} view={view} />
     </group>
   );

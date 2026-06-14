@@ -5,10 +5,6 @@ export default function Home() {
   return (
     <main className="app-shell">
       <MapScene />
-      <div className="title-lockup">
-        <span>OSRS Map Prototype</span>
-        <h1>The Observatory</h1>
-      </div>
       <ActivitySidebar />
     </main>
   );

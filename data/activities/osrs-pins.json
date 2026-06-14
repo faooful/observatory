@@ -1,47 +1,351 @@
 [
   {
-    "id": "lumbridge",
-    "label": "Lumbridge",
-    "type": "city",
-    "x": 3222,
-    "y": 3218,
+    "id": "cooks-assistant",
+    "label": "Cook's Assistant",
+    "type": "quest",
+    "x": 3208,
+    "y": 3214,
     "plane": 0,
-    "description": "Starting area and early account hub."
+    "description": "Begin in Lumbridge Castle kitchen. A short early quest with no requirements.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Cook%27s_Assistant",
+    "questName": "Cook's Assistant",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Cook%27s_Assistant",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
   },
   {
-    "id": "varrock",
-    "label": "Varrock",
-    "type": "city",
-    "x": 3210,
-    "y": 3424,
+    "id": "restless-ghost",
+    "label": "The Restless Ghost",
+    "type": "quest",
+    "x": 3243,
+    "y": 3206,
     "plane": 0,
-    "description": "Major city hub with quests, shops, and Grand Exchange access."
+    "description": "Starts with Father Aereck in Lumbridge church and introduces early Prayer progression.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Restless_Ghost",
+    "questName": "The Restless Ghost",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Restless_Ghost",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
   },
   {
-    "id": "grand-exchange",
-    "label": "Grand Exchange",
-    "type": "city",
-    "x": 3164,
-    "y": 3485,
+    "id": "x-marks-the-spot",
+    "label": "X Marks the Spot",
+    "type": "quest",
+    "x": 3224,
+    "y": 3242,
     "plane": 0,
-    "description": "Primary trading hub."
+    "description": "Talk to Veos at the Sheared Ram pub in Lumbridge for an early clue-style quest.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/X_Marks_the_Spot",
+    "questName": "X Marks the Spot",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/X_Marks_the_Spot",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
   },
   {
-    "id": "draynor",
-    "label": "Draynor Village",
-    "type": "city",
-    "x": 3093,
-    "y": 3244,
+    "id": "vampyre-slayer",
+    "label": "Vampyre Slayer",
+    "type": "quest",
+    "x": 3097,
+    "y": 3269,
     "plane": 0,
-    "description": "Early skilling and quest hub."
+    "description": "Starts with Morgan in Draynor Village and points toward Draynor Manor combat prep.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Vampyre_Slayer",
+    "questName": "Vampyre Slayer",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Vampyre_Slayer",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
   },
   {
-    "id": "al-kharid",
-    "label": "Al Kharid",
-    "type": "city",
-    "x": 3293,
-    "y": 3174,
+    "id": "bear-your-soul",
+    "label": "Bear Your Soul",
+    "type": "quest",
+    "x": 1815,
+    "y": 3855,
     "plane": 0,
-    "description": "Desert gateway and early combat/skilling area."
+    "description": "Start by finding Soul journey in the Arceuus Library, then speak with Aretha near the Soul altar.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Bear_Your_Soul",
+    "questName": "Bear Your Soul",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Bear_Your_Soul",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "barbarian-training",
+    "label": "Barbarian Training",
+    "type": "quest",
+    "x": 2506,
+    "y": 3488,
+    "plane": 0,
+    "description": "Starts with Otto Godblessed at Otto's Grotto, west of Baxtorian Falls.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Barbarian_Training",
+    "questName": "Barbarian Training",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Barbarian_Training",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "daddys-home",
+    "label": "Daddy's Home",
+    "type": "quest",
+    "x": 3240,
+    "y": 3478,
+    "plane": 0,
+    "description": "Starts with Marlo at the Varrock estate agent building.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Daddy%27s_Home",
+    "questName": "Daddy's Home",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Daddy%27s_Home",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "family-pest",
+    "label": "Family Pest",
+    "type": "quest",
+    "x": 3281,
+    "y": 3403,
+    "plane": 0,
+    "description": "Miniquest marker near Dimintheis in south-east Varrock.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Family_Pest",
+    "questName": "Family Pest",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Family_Pest",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "into-the-tombs",
+    "label": "Into the Tombs",
+    "type": "quest",
+    "x": 3357,
+    "y": 2755,
+    "plane": 0,
+    "description": "Tombs of Amascut tutorial/miniquest marker.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Into_the_Tombs",
+    "questName": "Into the Tombs",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Into_the_Tombs",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "scrambled",
+    "label": "Scrambled!",
+    "type": "quest",
+    "x": 1560,
+    "y": 3320,
+    "plane": 0,
+    "description": "Varlamore marker for the Scrambled! quest start area.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Scrambled!",
+    "questName": "Scrambled!",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Scrambled!",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "shadows-of-custodia",
+    "label": "Shadows of Custodia",
+    "type": "quest",
+    "x": 1375,
+    "y": 3380,
+    "plane": 0,
+    "description": "Auburn Valley marker for the Shadows of Custodia quest start area.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Shadows_of_Custodia",
+    "questName": "Shadows of Custodia",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Shadows_of_Custodia",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "the-enchanted-key",
+    "label": "The Enchanted Key",
+    "type": "quest",
+    "x": 3360,
+    "y": 3340,
+    "plane": 0,
+    "description": "Miniquest marker for the enchanted key treasure trail.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Enchanted_Key",
+    "questName": "The Enchanted Key",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Enchanted_Key",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "the-final-dawn",
+    "label": "The Final Dawn",
+    "type": "quest",
+    "x": 1395,
+    "y": 3105,
+    "plane": 0,
+    "description": "Sunrise Palace marker for the Final Dawn quest start area.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Final_Dawn",
+    "questName": "The Final Dawn",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Final_Dawn",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "the-frozen-door",
+    "label": "The Frozen Door",
+    "type": "quest",
+    "x": 2916,
+    "y": 3746,
+    "plane": 0,
+    "description": "God Wars Dungeon marker for The Frozen Door miniquest.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Frozen_Door",
+    "questName": "The Frozen Door",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Frozen_Door",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "the-ides-of-milk",
+    "label": "The Ides of Milk",
+    "type": "quest",
+    "x": 3258,
+    "y": 3266,
+    "plane": 0,
+    "description": "Lumbridge cow field marker for the Ides of Milk quest.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Ides_of_Milk",
+    "questName": "The Ides of Milk",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Ides_of_Milk",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "the-red-reef",
+    "label": "The Red Reef",
+    "type": "quest",
+    "x": 1455,
+    "y": 3005,
+    "plane": 0,
+    "description": "Sailing quest marker near the southern Varlamore coast.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/The_Red_Reef",
+    "questName": "The Red Reef",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/The_Red_Reef",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "vale-totems",
+    "label": "Vale Totems",
+    "type": "quest",
+    "x": 1325,
+    "y": 3430,
+    "plane": 0,
+    "description": "Auburn Valley marker for the Vale Totems miniquest/minigame unlock.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Vale_Totems",
+    "questName": "Vale Totems",
+    "coordinateSource": {
+      "label": "OSRS Wiki page + curated world coordinate fallback",
+      "url": "https://oldschool.runescape.wiki/w/Vale_Totems",
+      "confidence": "manual",
+      "note": "Used only after WikiSync identifies this quest as incomplete; coordinates are maintained locally until a reliable quest-start coordinate source is available."
+    }
+  },
+  {
+    "id": "tree-gnome-stronghold-agility",
+    "label": "Gnome Stronghold Agility",
+    "type": "skill",
+    "x": 2473,
+    "y": 3436,
+    "plane": 0,
+    "description": "A level 1 Agility training course at the Tree Gnome Stronghold.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Gnome_Stronghold_Agility_Course",
+    "requirements": {
+      "skills": {
+        "Agility": 1
+      }
+    }
+  },
+  {
+    "id": "varrock-rooftop",
+    "label": "Varrock Rooftop Course",
+    "type": "skill",
+    "x": 3223,
+    "y": 3414,
+    "plane": 0,
+    "description": "A rooftop Agility course in central Varrock.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Varrock_Rooftop_Course",
+    "requirements": {
+      "skills": {
+        "Agility": 30
+      }
+    }
+  },
+  {
+    "id": "wintertodt",
+    "label": "Wintertodt",
+    "type": "boss",
+    "x": 1630,
+    "y": 3944,
+    "plane": 0,
+    "description": "Firemaking boss encounter in the northern reaches of Great Kourend.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Wintertodt",
+    "requirements": {
+      "skills": {
+        "Firemaking": 50
+      }
+    }
+  },
+  {
+    "id": "fairy-rings",
+    "label": "Fairy Rings",
+    "type": "transport",
+    "x": 2412,
+    "y": 4434,
+    "plane": 0,
+    "description": "Transportation network unlocked after partial progress in Fairy Tale II.",
+    "wikiUrl": "https://oldschool.runescape.wiki/w/Fairy_ring",
+    "requirements": {
+      "quests": [
+        "Fairytale I - Growing Pains"
+      ]
+    }
   }
 ]
