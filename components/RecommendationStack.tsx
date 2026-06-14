@@ -5,8 +5,7 @@ import { useMapStore } from "@/lib/store/useMapStore";
 import { MetricPill } from "./MetricPill";
 
 export function RecommendationStack({ activities, showTitle = true }: { activities: Activity[]; showTitle?: boolean }) {
-  const selectActivity = useMapStore((state) => state.selectActivity);
-  const setActiveLayer = useMapStore((state) => state.setActiveLayer);
+  const focusActivity = useMapStore((state) => state.focusActivity);
 
   return (
     <section>
@@ -16,10 +15,7 @@ export function RecommendationStack({ activities, showTitle = true }: { activiti
           <button
             key={activity.id}
             type="button"
-            onClick={() => {
-              setActiveLayer(activity.type);
-              selectActivity(activity.id);
-            }}
+            onClick={() => focusActivity(activity)}
           >
             <span>
               <strong>{activity.title}</strong>
