@@ -427,12 +427,11 @@ button {
   z-index: 1;
   display: grid;
   min-height: 0;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
 }
 
 .activity-dock-header,
-.activity-dock-summary,
 .activity-dock .pin-list {
   position: relative;
   z-index: 1;
@@ -454,8 +453,7 @@ button {
   min-width: 0;
 }
 
-.activity-dock-header span,
-.activity-dock-summary span {
+.activity-dock-header span {
   color: #858892;
   font-size: 0.68rem;
   font-weight: 700;
@@ -480,27 +478,6 @@ button {
   font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
-}
-
-.activity-dock-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.activity-dock-summary div {
-  display: grid;
-  gap: 3px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.activity-dock-summary strong {
-  color: #d8d9dd;
-  font-size: 0.95rem;
-  font-weight: 650;
 }
 
 .activity-dock .pin-list {

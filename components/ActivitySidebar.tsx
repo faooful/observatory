@@ -197,8 +197,6 @@ function ActivityDock({
   onSelectLayer: (layer: ActivityType) => void;
 }) {
   const activeActivities = activitiesByLayer[activeLayer];
-  const readyCount = activeActivities.filter((activity) => activity.status === "ready").length;
-  const blockedCount = activeActivities.filter((activity) => activity.status === "blocked").length;
   const totalCount = activeActivities.length;
 
   return (
@@ -211,16 +209,6 @@ function ActivityDock({
               <strong>{ACTIVITY_PANEL_LABELS[activeLayer]}</strong>
             </div>
             <small>{totalCount} total</small>
-          </div>
-          <div className="activity-dock-summary">
-            <div>
-              <span>Ready</span>
-              <strong>{readyCount}</strong>
-            </div>
-            <div>
-              <span>Blocked</span>
-              <strong>{blockedCount}</strong>
-            </div>
           </div>
           <ActivityList activities={activeActivities} />
         </div>
