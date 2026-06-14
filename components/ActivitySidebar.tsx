@@ -1,18 +1,22 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
-import { ActivityDetailCard } from "@/components/ActivityDetailCard";
-import { ActivityLayerTabs } from "@/components/ActivityLayerTabs";
 import { MetricPill } from "@/components/MetricPill";
-import { RecommendationStack } from "@/components/RecommendationStack";
-import { ACTIVITY_LAYERS, getActivities, getVisibleActivities, sortRecommendations } from "@/lib/activities/activityModel";
-import type { Activity } from "@/lib/activities/types";
+import { getActivities, getVisibleActivities, sortRecommendations } from "@/lib/activities/activityModel";
+import type { Activity, ActivityType } from "@/lib/activities/types";
 import { type PlayerLookup } from "@/lib/osrs/player";
 import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
 const MAX_HISTORY = 5;
-type PanelId = "focus" | "goals" | "snapshot";
+const PANEL_ACTIVITY_LIMIT = 4;
+type PanelId = ActivityType;
+
+const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
+  quest: "Quests",
+  money: "Money",
+  boss: "Bosses"
+};
 
 function CollapsiblePanel({
   children,
@@ -81,6 +85,7 @@ function writeHistory(username: string) {
 function ActivityList({ activities }: { activities: Activity[] }) {
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const selectActivity = useMapStore((state) => state.selectActivity);
+  const setActiveLayer = useMapStore((state) => state.setActiveLayer);
 
   return (
     <div className="pin-list activity-list">
@@ -89,7 +94,10 @@ function ActivityList({ activities }: { activities: Activity[] }) {
           className={`pin-button is-${activity.status}${activity.id === selectedActivityId ? " is-active" : ""}`}
           key={activity.id}
           type="button"
-          onClick={() => selectActivity(activity.id)}
+          onClick={() => {
+            setActiveLayer(activity.type);
+            selectActivity(activity.id);
+          }}
         >
           <span>
             <strong>{activity.title}</strong>
@@ -107,20 +115,17 @@ export function ActivitySidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collapsedPanels, setCollapsedPanels] = useState<Record<PanelId, boolean>>({
-    focus: false,
-    goals: false,
-    snapshot: false
+    quest: false,
+    money: false,
+    boss: false
   });
-  const activeLayer = useMapStore((state) => state.activeLayer);
-  const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const resetView = useMapStore((state) => state.resetView);
   const player = useMapStore((state) => state.player);
   const setPlayer = useMapStore((state) => state.setPlayer);
   const activities = useMemo(() => getActivities({ player }), [player]);
-  const visibleActivities = useMemo(() => (player ? getVisibleActivities(activities, activeLayer) : []), [activities, activeLayer, player]);
-  const selectedActivity = activities.find((activity) => activity.id === selectedActivityId);
-  const recommendations = useMemo(() => (player ? sortRecommendations(activities).slice(0, 3) : []), [activities, player]);
-  const layerLabel = ACTIVITY_LAYERS.find((layer) => layer.type === activeLayer)?.label ?? "Activities";
+  const questActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "quest")) : []), [activities, player]);
+  const moneyActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "money")) : []), [activities, player]);
+  const bossActivities = useMemo(() => (player ? sortRecommendations(getVisibleActivities(activities, "boss")) : []), [activities, player]);
   const completedQuestCount = useMemo(() => Object.values(player?.quests ?? {}).filter((state) => state === 2).length, [player?.quests]);
 
   useEffect(() => {
@@ -178,6 +183,37 @@ export function ActivitySidebar() {
     }));
   };
 
+  const renderActivityPanel = ({
+    activities: panelActivities,
+    className,
+    type
+  }: {
+    activities: Activity[];
+    className: string;
+    type: ActivityType;
+  }) => {
+    const readyCount = panelActivities.filter((activity) => activity.status === "ready").length;
+    const blockedCount = panelActivities.filter((activity) => activity.status === "blocked").length;
+    const visibleActivities = panelActivities.slice(0, PANEL_ACTIVITY_LIMIT);
+
+    return (
+      <CollapsiblePanel
+        className={className}
+        collapsed={collapsedPanels[type]}
+        onToggle={() => togglePanel(type)}
+        title={ACTIVITY_PANEL_LABELS[type]}
+      >
+        <div className="panel-property-row">
+          <span>Available</span>
+          <strong>
+            {readyCount} ready / {blockedCount} blocked
+          </strong>
+        </div>
+        <ActivityList activities={visibleActivities} />
+      </CollapsiblePanel>
+    );
+  };
+
   return (
     <aside className="sidebar overlay-shell" aria-label="Observatory controls">
       {!player ? (
@@ -209,68 +245,27 @@ export function ActivitySidebar() {
       ) : (
         <div className="hud-grid hud-grid--active">
           <header className="account-bar" aria-label="Current player">
-            <div>
-              <span>Player</span>
+            <div className="account-main">
               <strong>{player.username}</strong>
+              <dl className="account-stats">
+                <div>
+                  <dt>Total</dt>
+                  <dd>{player.skills.Overall?.level ?? "-"}</dd>
+                </div>
+                <div>
+                  <dt>Quests</dt>
+                  <dd>{player.questSource === "wikisync" ? completedQuestCount : "-"}</dd>
+                </div>
+              </dl>
             </div>
             <button type="button" onClick={returnToLookup}>
               Change
             </button>
           </header>
 
-          <CollapsiblePanel
-            className="hud-panel--upper-right"
-            collapsed={collapsedPanels.focus}
-            onToggle={() => togglePanel("focus")}
-            title="Focus"
-          >
-            <div className="panel-property-row">
-              <span>Layer</span>
-              <strong>{layerLabel}</strong>
-            </div>
-            <ActivityLayerTabs />
-
-            <div className="stat-grid">
-              <div className="stat">
-                <span>Total</span>
-                <strong>{player.skills.Overall?.level ?? "-"}</strong>
-              </div>
-              <div className="stat">
-                <span>Quests</span>
-                <strong>{player.questSource === "wikisync" ? completedQuestCount : "-"}</strong>
-              </div>
-              <div className="stat">
-                <span>Layer</span>
-                <strong>{layerLabel}</strong>
-              </div>
-            </div>
-          </CollapsiblePanel>
-
-          <CollapsiblePanel
-            className="hud-panel--lower-left"
-            collapsed={collapsedPanels.goals}
-            onToggle={() => togglePanel("goals")}
-            title="Goals"
-          >
-            <div className="panel-property-row">
-              <span>Recommended</span>
-              <strong>Next best activities</strong>
-            </div>
-            <RecommendationStack activities={recommendations} showTitle={false} />
-          </CollapsiblePanel>
-
-          <CollapsiblePanel
-            className="hud-panel--lower-right"
-            collapsed={collapsedPanels.snapshot}
-            onToggle={() => togglePanel("snapshot")}
-            title="Snapshot"
-          >
-            <div className="panel-property-row">
-              <span>{selectedActivity ? "Selected" : "Layer"}</span>
-              <strong>{selectedActivity ? selectedActivity.title : layerLabel}</strong>
-            </div>
-            {selectedActivity ? <ActivityDetailCard activity={selectedActivity} /> : <ActivityList activities={visibleActivities.slice(0, 6)} />}
-          </CollapsiblePanel>
+          {renderActivityPanel({ activities: questActivities, className: "hud-panel--upper-right", type: "quest" })}
+          {renderActivityPanel({ activities: moneyActivities, className: "hud-panel--lower-left", type: "money" })}
+          {renderActivityPanel({ activities: bossActivities, className: "hud-panel--lower-right", type: "boss" })}
         </div>
       )}
     </aside>

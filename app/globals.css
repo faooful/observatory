@@ -205,21 +205,21 @@ button {
   align-self: start;
   justify-self: start;
   display: flex;
-  min-width: 228px;
-  align-items: center;
+  min-width: 238px;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 10px 10px 10px 12px;
+  padding: 11px 10px 11px 12px;
   background: rgba(11, 11, 12, 0.9);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(12px);
 }
 
-.account-bar div {
+.account-main {
   display: grid;
-  gap: 2px;
+  gap: 4px;
 }
 
 .account-bar span {
@@ -230,7 +230,31 @@ button {
 
 .account-bar strong {
   color: #f2f2f3;
-  font-size: 0.98rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.account-stats {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 0;
+}
+
+.account-stats div {
+  display: flex;
+  gap: 4px;
+}
+
+.account-stats dt,
+.account-stats dd {
+  margin: 0;
+  color: #858892;
+  font-size: 0.68rem;
+  line-height: 1;
+}
+
+.account-stats dd {
+  color: #c5c7ce;
   font-weight: 600;
 }
 
@@ -281,12 +305,12 @@ button {
   grid-row: 2;
   align-self: end;
   justify-self: start;
-  width: min(100%, 420px);
+  margin-left: 42px;
+  width: min(calc(100% - 42px), 378px);
   padding: 0;
 }
 
 .hud-panel--lower-left.is-collapsed {
-  margin-left: 42px;
   width: min(calc(100% - 42px), 378px);
 }
 
