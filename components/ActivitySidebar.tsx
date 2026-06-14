@@ -188,10 +188,12 @@ function LocateCommand({ activities }: { activities: Activity[] }) {
 function ActivityDock({
   activeLayer,
   activitiesByLayer,
+  dockOpen,
   onSelectLayer
 }: {
   activeLayer: ActivityType;
   activitiesByLayer: Record<ActivityType, Activity[]>;
+  dockOpen: boolean;
   onSelectLayer: (layer: ActivityType) => void;
 }) {
   const activeActivities = activitiesByLayer[activeLayer];
@@ -200,29 +202,33 @@ function ActivityDock({
   const totalCount = activeActivities.length;
 
   return (
-    <section className="activity-dock" aria-label="Activity layers">
-      <div className="activity-dock-header">
-        <div>
-          <span>Activities</span>
-          <strong>{ACTIVITY_PANEL_LABELS[activeLayer]}</strong>
+    <section className={`activity-dock${dockOpen ? "" : " is-closed"}`} aria-label="Activity layers">
+      {dockOpen && (
+        <div className="activity-dock-body">
+          <div className="activity-dock-header">
+            <div>
+              <span>Activities</span>
+              <strong>{ACTIVITY_PANEL_LABELS[activeLayer]}</strong>
+            </div>
+            <small>{totalCount} total</small>
+          </div>
+          <div className="activity-dock-summary">
+            <div>
+              <span>Ready</span>
+              <strong>{readyCount}</strong>
+            </div>
+            <div>
+              <span>Blocked</span>
+              <strong>{blockedCount}</strong>
+            </div>
+          </div>
+          <ActivityList activities={activeActivities} />
         </div>
-        <small>{totalCount} total</small>
-      </div>
-      <div className="activity-dock-summary">
-        <div>
-          <span>Ready</span>
-          <strong>{readyCount}</strong>
-        </div>
-        <div>
-          <span>Blocked</span>
-          <strong>{blockedCount}</strong>
-        </div>
-      </div>
-      <ActivityList activities={activeActivities} />
+      )}
       <nav className="activity-dock-tabs" aria-label="Switch activity layer">
         {(["quest", "money", "boss"] as ActivityType[]).map((layer) => (
           <button
-            aria-label={ACTIVITY_PANEL_LABELS[layer]}
+            aria-label={dockOpen && activeLayer === layer ? `Close ${ACTIVITY_PANEL_LABELS[layer]}` : ACTIVITY_PANEL_LABELS[layer]}
             className={activeLayer === layer ? "is-active" : ""}
             key={layer}
             onClick={() => onSelectLayer(layer)}
@@ -241,6 +247,7 @@ export function ActivitySidebar() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dockOpen, setDockOpen] = useState(true);
   const [pendingActivityId, setPendingActivityId] = useState<string | null>(null);
   const activeLayer = useMapStore((state) => state.activeLayer);
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
@@ -375,6 +382,18 @@ export function ActivitySidebar() {
     }
   };
 
+  const selectDockLayer = (layer: ActivityType) => {
+    if (dockOpen && layer === activeLayer) {
+      setDockOpen(false);
+      return;
+    }
+
+    setDockOpen(true);
+    if (layer !== activeLayer) {
+      setActiveLayer(layer);
+    }
+  };
+
   return (
     <aside className="sidebar overlay-shell" aria-label="Observatory controls">
       {!player ? (
@@ -425,7 +444,7 @@ export function ActivitySidebar() {
           </header>
           <LocateCommand activities={activities} />
 
-          <ActivityDock activeLayer={activeLayer} activitiesByLayer={activitiesByLayer} onSelectLayer={setActiveLayer} />
+          <ActivityDock activeLayer={activeLayer} activitiesByLayer={activitiesByLayer} dockOpen={dockOpen} onSelectLayer={selectDockLayer} />
         </div>
       )}
     </aside>

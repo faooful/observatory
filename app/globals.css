@@ -403,6 +403,35 @@ button {
   pointer-events: none;
 }
 
+.activity-dock.is-closed {
+  display: block;
+  width: 48px;
+  margin-right: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.activity-dock.is-closed::before {
+  display: none;
+}
+
+.activity-dock.is-closed .activity-dock-tabs {
+  position: static;
+  transform: none;
+}
+
+.activity-dock-body {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+}
+
 .activity-dock-header,
 .activity-dock-summary,
 .activity-dock .pin-list {
