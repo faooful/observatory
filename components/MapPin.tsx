@@ -8,7 +8,6 @@ import { useMapStore } from "@/lib/store/useMapStore";
 import type { ActivityPin } from "@/lib/terrain/types";
 
 const typeColors: Record<ActivityPin["type"], string> = {
-  city: "#e7c56b",
   skill: "#63d7a6",
   quest: "#80a8ff",
   boss: "#f06b6b",
