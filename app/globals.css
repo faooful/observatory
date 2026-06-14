@@ -404,9 +404,9 @@ button {
 }
 
 .activity-dock.is-closed {
-  display: block;
+  display: grid;
   width: 48px;
-  margin-right: 0;
+  margin-right: 58px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -419,8 +419,7 @@ button {
 }
 
 .activity-dock.is-closed .activity-dock-tabs {
-  position: static;
-  transform: none;
+  right: -57px;
 }
 
 .activity-dock-body {

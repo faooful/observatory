@@ -229,7 +229,7 @@ function ActivityDock({
         {(["quest", "money", "boss"] as ActivityType[]).map((layer) => (
           <button
             aria-label={dockOpen && activeLayer === layer ? `Close ${ACTIVITY_PANEL_LABELS[layer]}` : ACTIVITY_PANEL_LABELS[layer]}
-            className={activeLayer === layer ? "is-active" : ""}
+            className={dockOpen && activeLayer === layer ? "is-active" : ""}
             key={layer}
             onClick={() => onSelectLayer(layer)}
             title={ACTIVITY_PANEL_LABELS[layer]}
