@@ -44,7 +44,7 @@ export function RightPanel({ activities }: { activities: Activity[] }) {
           </div>
         </div>
       ) : (
-        <p>Look up an OSRS username to personalize ready, blocked, completed, and recommended activities.</p>
+        <p>Look up an OSRS username to see activities the account can do now.</p>
       )}
 
       {selectedActivity ? (
@@ -54,7 +54,7 @@ export function RightPanel({ activities }: { activities: Activity[] }) {
           {recommendations.length > 0 ? (
             <RecommendationStack activities={recommendations} />
           ) : (
-            <p className="empty-state">Enter an OSRS username to generate account-aware recommendations.</p>
+            <p className="empty-state">Enter an OSRS username to show account-eligible activities.</p>
           )}
           <section>
             <h3>{layerLabel} Snapshot</h3>
@@ -64,8 +64,8 @@ export function RightPanel({ activities }: { activities: Activity[] }) {
                 <strong>{visibleLayerActivities.filter((activity) => activity.state === "ready").length}</strong>
               </div>
               <div>
-                <span>Recommended</span>
-                <strong>{visibleLayerActivities.filter((activity) => activity.state === "recommended").length}</strong>
+                <span>Eligible</span>
+                <strong>{visibleLayerActivities.filter((activity) => activity.status === "ready").length}</strong>
               </div>
               <div>
                 <span>Blocked</span>

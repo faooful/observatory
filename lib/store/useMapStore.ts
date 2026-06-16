@@ -11,17 +11,27 @@ export type MapFocusRequest = {
   version: number;
 };
 
+export type MapRotationRequest = {
+  deltaRadians: number;
+  version: number;
+};
+
 type MapState = {
   selectedPinId: string | null;
   selectedActivityId: string | null;
   activeLayer: ActivityType;
   focusRequest: MapFocusRequest | null;
+  rotationRequest: MapRotationRequest | null;
+  compassAngle: number;
   viewVersion: number;
   player: PlayerLookup | null;
   selectPin: (pinId: string) => void;
   selectActivity: (activityId: string) => void;
+  clearSelection: () => void;
   focusActivity: (activity: Activity) => void;
   focusLocation: (location: { x: number; y: number; label?: string }) => void;
+  rotateView: (deltaRadians: number) => void;
+  setCompassAngle: (angleRadians: number) => void;
   setActiveLayer: (layer: ActivityType) => void;
   resetView: () => void;
   setPlayer: (player: PlayerLookup | null) => void;
@@ -32,10 +42,13 @@ export const useMapStore = create<MapState>((set) => ({
   selectedActivityId: null,
   activeLayer: "quest",
   focusRequest: null,
+  rotationRequest: null,
+  compassAngle: 0,
   viewVersion: 0,
   player: null,
   selectPin: (pinId) => set({ selectedPinId: pinId, selectedActivityId: pinId }),
   selectActivity: (activityId) => set({ selectedPinId: activityId, selectedActivityId: activityId }),
+  clearSelection: () => set({ selectedPinId: null, selectedActivityId: null }),
   focusActivity: (activity) =>
     set((state) => ({
       activeLayer: activity.type,
@@ -59,6 +72,14 @@ export const useMapStore = create<MapState>((set) => ({
         version: state.focusRequest ? state.focusRequest.version + 1 : 1
       }
     })),
+  rotateView: (deltaRadians) =>
+    set((state) => ({
+      rotationRequest: {
+        deltaRadians,
+        version: state.rotationRequest ? state.rotationRequest.version + 1 : 1
+      }
+    })),
+  setCompassAngle: (compassAngle) => set({ compassAngle }),
   setActiveLayer: (activeLayer) => set({ activeLayer, selectedPinId: null, selectedActivityId: null, focusRequest: null }),
   resetView: () =>
     set((state) => ({ selectedPinId: null, selectedActivityId: null, focusRequest: null, viewVersion: state.viewVersion + 1 })),

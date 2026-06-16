@@ -9,6 +9,9 @@
     "lint": "next lint",
     "generate:terrain": "tsx scripts/generate-mock-terrain.ts",
     "generate:osrs-cache-scene": "tsx scripts/generate-osrs-cache-scene.ts",
+    "generate:money-makers": "tsx scripts/generate-osrs-money-makers.ts",
+    "generate:bosses": "tsx scripts/generate-osrs-bosses.ts",
+    "generate:boss-gear": "tsx scripts/generate-osrs-boss-strategy-gear.ts",
     "stitch:overview": "tsx scripts/stitch-overview-texture.ts",
     "verify:markers": "tsx scripts/verify-osrs-marker-sources.ts",
     "verify:projection": "tsx scripts/verify-projection-roundtrip.ts"

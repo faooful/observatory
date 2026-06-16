@@ -15,6 +15,8 @@ export type OsrsMapSquareAsset = {
   indexCount: number;
   positions: string;
   colors: string;
+  uvs?: string;
+  textureIndices?: string;
   indices: string;
 };
 
@@ -50,6 +52,14 @@ export type OsrsTexturePyramid = {
   }>;
 };
 
+export type OsrsTextureAtlas = {
+  texture: string;
+  tileSize: number;
+  columns: number;
+  rows: number;
+  count: number;
+};
+
 export type OsrsProjectionSettings = {
   type: "globe-to-plane";
   radius: number;
@@ -77,6 +87,7 @@ export type OsrsSceneManifest = {
   };
   overview?: OsrsOverviewAsset;
   texturePyramid?: OsrsTexturePyramid;
+  textureAtlas?: OsrsTextureAtlas;
   projection?: OsrsProjectionSettings;
   validMapSquares?: Array<{ mapX: number; mapY: number }>;
   lod?: OsrsSceneLodThresholds;

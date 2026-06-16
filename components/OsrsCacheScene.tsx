@@ -10,15 +10,16 @@ import {
   DoubleSide,
   FrontSide,
   MathUtils,
+  NearestFilter,
   SRGBColorSpace,
+  ShaderMaterial,
   TextureLoader,
   Vector3
 } from "three";
 import type { Group } from "three";
 import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from "three";
 import type { CameraControlsImpl } from "@react-three/drei";
-import { type PlayerLookup } from "@/lib/osrs/player";
-import { getActivities, getVisibleActivities } from "@/lib/activities/activityModel";
+import { getTabActivities } from "@/lib/activities/activityModel";
 import type { Activity } from "@/lib/activities/types";
 import { useMapStore } from "@/lib/store/useMapStore";
 import type { OsrsMapSquareAsset, OsrsSceneManifest } from "@/lib/osrs-scene/types";
@@ -35,11 +36,14 @@ const SCENE_ROOT = "/osrs-scene/osrs-238_2026-06-03";
 const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
 const MAX_CONCURRENT_CHUNK_LOADS = 18;
+const ENABLE_CLOSE_TEXTURE_ATLAS = true;
 
 type LoadedChunk = {
   asset: OsrsMapSquareAsset;
   positions: Float32Array;
   colors: Float32Array;
+  uvs?: Float32Array;
+  textureIndices?: Float32Array;
   indices: Uint32Array | Int32Array;
 };
 
@@ -121,13 +125,17 @@ async function loadManifest() {
 }
 
 async function loadChunk(asset: OsrsMapSquareAsset) {
-  const [positions, colors, indices] = await Promise.all([
+  const [positions, colors, indices, uvs, textureIndices] = await Promise.all([
     loadBinary(`${SCENE_ROOT}/${asset.positions}`, (buffer) => new Float32Array(buffer)),
     loadBinary(`${SCENE_ROOT}/${asset.colors}`, (buffer) => new Float32Array(buffer)),
-    loadBinary(`${SCENE_ROOT}/${asset.indices}`, (buffer) => new Uint32Array(buffer))
+    loadBinary(`${SCENE_ROOT}/${asset.indices}`, (buffer) => new Uint32Array(buffer)),
+    asset.uvs ? loadBinary(`${SCENE_ROOT}/${asset.uvs}`, (buffer) => new Float32Array(buffer)) : Promise.resolve(undefined),
+    asset.textureIndices
+      ? loadBinary(`${SCENE_ROOT}/${asset.textureIndices}`, (buffer) => new Float32Array(buffer))
+      : Promise.resolve(undefined)
   ]);
 
-  return { asset, positions, colors, indices };
+  return { asset, positions, colors, indices, uvs, textureIndices };
 }
 
 function getSceneCenter(manifest: OsrsSceneManifest) {
@@ -169,7 +177,7 @@ function getGlobeOpacity(transition: number) {
 function getFlatOverviewOpacity(transition: number) {
   const fadeIn = MathUtils.smoothstep(transition, 0.14, 0.52);
   const fadeOut = 1 - MathUtils.smoothstep(transition, 0.88, 1);
-  const closeFloor = MathUtils.smoothstep(transition, 0.86, 1) * 0.34;
+  const closeFloor = MathUtils.smoothstep(transition, 0.86, 1);
   return Math.max(closeFloor, fadeIn * fadeOut);
 }
 
@@ -180,10 +188,10 @@ function getStreamedChunkOpacity(transition: number) {
 function getChunkRadius(distance: number, lod: SceneLod, movementSpeed: number) {
   const baseRadius = Math.max(1, Math.floor(lod.closeChunkRadius));
   const zoomBlend = 1 - MathUtils.smoothstep(distance, lod.closeDistance * 0.7, lod.planeDistance * 0.62);
-  const movementBonus = movementSpeed > 360 ? 2 : movementSpeed > 140 ? 1 : 0;
-  const earlyZoomBonus = distance < lod.closeDistance * 2.15 ? 1 : 0;
+  const movementBonus = movementSpeed > 360 ? 1 : 0;
+  const earlyZoomBonus = distance < lod.closeDistance * 1.35 ? 1 : 0;
 
-  return MathUtils.clamp(Math.ceil(baseRadius + zoomBlend * 2 + movementBonus + earlyZoomBonus), baseRadius, baseRadius + 5);
+  return MathUtils.clamp(Math.ceil(baseRadius + zoomBlend + movementBonus + earlyZoomBonus), baseRadius, baseRadius + 2);
 }
 
 function shouldStreamChunks(distance: number, lod: SceneLod) {
@@ -318,14 +326,30 @@ function useOverviewTexture(manifest: OsrsSceneManifest): OverviewTextureResult 
 }
 
 function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest: OsrsSceneManifest; opacity: number }) {
-  const material = useRef<MeshStandardMaterial>(null);
+  const colorMaterial = useRef<MeshStandardMaterial>(null);
+  const texturedMaterial = useRef<ShaderMaterial>(null);
   const opacityRef = useRef(0);
+  const atlasPath = manifest.textureAtlas?.texture ?? manifest.overview?.globeTexture ?? "overview/globe/0/0_0.png";
+  const atlasTexture = useLoader(TextureLoader, `${SCENE_ROOT}/${atlasPath}`);
+  useMemo(() => {
+    atlasTexture.colorSpace = SRGBColorSpace;
+    atlasTexture.flipY = false;
+    atlasTexture.generateMipmaps = false;
+    atlasTexture.minFilter = NearestFilter;
+    atlasTexture.magFilter = NearestFilter;
+    atlasTexture.needsUpdate = true;
+  }, [atlasTexture]);
   const geometry = useMemo(() => {
     const { centerX, centerY } = getSceneCenter(manifest);
+    const vertexCount = chunk.colors.length / 4;
     const positions = new Float32Array(chunk.positions.length);
-    const colors = new Float32Array((chunk.colors.length / 4) * 3);
+    const colors = new Float32Array(vertexCount * 3);
+    const atlasUvs = new Float32Array(vertexCount * 2);
+    const textureMix = new Float32Array(vertexCount);
+    const atlas = manifest.textureAtlas;
+    const atlasEnabled = Boolean(ENABLE_CLOSE_TEXTURE_ATLAS && atlas && chunk.uvs && chunk.textureIndices);
 
-    for (let index = 0; index < chunk.positions.length / 3; index += 1) {
+    for (let index = 0; index < vertexCount; index += 1) {
       const worldX = chunk.positions[index * 3];
       const worldHeight = chunk.positions[index * 3 + 1];
       const worldY = chunk.positions[index * 3 + 2];
@@ -337,8 +361,16 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
       const green = chunk.colors[index * 4 + 1];
       const blue = chunk.colors[index * 4 + 2];
       const isMissingTextureFallback = Math.abs(red - green) < 0.018 && Math.abs(green - blue) < 0.018;
+      const textureIndex = chunk.textureIndices?.[index] ?? 0;
 
-      if (isMissingTextureFallback) {
+      if (atlasEnabled && chunk.uvs && textureIndex > 0) {
+        atlasUvs[index * 2] = chunk.uvs[index * 2];
+        atlasUvs[index * 2 + 1] = chunk.uvs[index * 2 + 1];
+        textureMix[index] = textureIndex;
+        colors[index * 3] = red;
+        colors[index * 3 + 1] = green;
+        colors[index * 3 + 2] = blue;
+      } else if (isMissingTextureFallback) {
         const terrainNoise = (Math.sin(worldX * 0.19 + worldY * 0.11) + Math.sin(worldX * 0.047 - worldY * 0.073)) * 0.5;
         const warmth = MathUtils.clamp(red + terrainNoise * 0.055, 0.12, 0.86);
         colors[index * 3] = warmth * 0.72;
@@ -351,19 +383,89 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
       }
     }
 
+    let colorIndexCount = chunk.indices.length;
+    let texturedIndexCount = 0;
+    if (atlasEnabled && chunk.textureIndices) {
+      colorIndexCount = 0;
+      for (let index = 0; index < chunk.indices.length; index += 3) {
+        const a = chunk.indices[index];
+        const b = chunk.indices[index + 1];
+        const c = chunk.indices[index + 2];
+        const textureA = chunk.textureIndices[a] ?? 0;
+        const textureB = chunk.textureIndices[b] ?? 0;
+        const textureC = chunk.textureIndices[c] ?? 0;
+        if (textureA > 0 || textureB > 0 || textureC > 0) {
+          texturedIndexCount += 3;
+        } else {
+          colorIndexCount += 3;
+        }
+      }
+    }
+
+    const colorIndices = new Uint32Array(colorIndexCount);
+    const texturedIndices = new Uint32Array(texturedIndexCount);
+    if (atlasEnabled && chunk.textureIndices) {
+      let colorCursor = 0;
+      let texturedCursor = 0;
+      for (let index = 0; index < chunk.indices.length; index += 3) {
+        const a = chunk.indices[index] ?? 0;
+        const b = chunk.indices[index + 1] ?? 0;
+        const c = chunk.indices[index + 2] ?? 0;
+        const textureA: number = chunk.textureIndices[a] ?? 0;
+        const textureB: number = chunk.textureIndices[b] ?? 0;
+        const textureC: number = chunk.textureIndices[c] ?? 0;
+        const triangleTexture = textureA > 0 ? textureA : textureB > 0 ? textureB : textureC;
+        const isTexturedTriangle = triangleTexture > 0;
+        if (isTexturedTriangle) {
+          textureMix[a] = triangleTexture;
+          textureMix[b] = triangleTexture;
+          textureMix[c] = triangleTexture;
+        }
+        const target: Uint32Array = isTexturedTriangle ? texturedIndices : colorIndices;
+        const cursor = isTexturedTriangle ? texturedCursor : colorCursor;
+        target[cursor] = a;
+        target[cursor + 1] = b;
+        target[cursor + 2] = c;
+        if (isTexturedTriangle) {
+          texturedCursor += 3;
+        } else {
+          colorCursor += 3;
+        }
+      }
+    } else {
+      colorIndices.set(chunk.indices);
+    }
+
+    const combinedIndices = new Uint32Array(colorIndices.length + texturedIndices.length);
+    combinedIndices.set(colorIndices, 0);
+    combinedIndices.set(texturedIndices, colorIndices.length);
+
     const nextGeometry = new BufferGeometry();
     nextGeometry.setAttribute("position", new BufferAttribute(positions, 3));
     nextGeometry.setAttribute("color", new BufferAttribute(colors, 3));
-    nextGeometry.setIndex(new BufferAttribute(chunk.indices, 1));
+    nextGeometry.setAttribute("atlasUv", new BufferAttribute(atlasUvs, 2));
+    nextGeometry.setAttribute("textureMix", new BufferAttribute(textureMix, 1));
+    nextGeometry.setIndex(new BufferAttribute(combinedIndices, 1));
+    if (colorIndices.length > 0) {
+      nextGeometry.addGroup(0, colorIndices.length, 0);
+    }
+    if (texturedIndices.length > 0) {
+      nextGeometry.addGroup(colorIndices.length, texturedIndices.length, 1);
+    }
     nextGeometry.computeVertexNormals();
     return nextGeometry;
-  }, [chunk.colors, chunk.indices, chunk.positions, manifest.bounds.maxX, manifest.bounds.maxY, manifest.bounds.minX, manifest.bounds.minY]);
+  }, [chunk.colors, chunk.indices, chunk.positions, chunk.textureIndices, chunk.uvs, manifest.bounds.maxX, manifest.bounds.maxY, manifest.bounds.minX, manifest.bounds.minY, manifest.textureAtlas]);
 
   useFrame((_, delta) => {
     opacityRef.current = MathUtils.damp(opacityRef.current, opacity, 8, delta);
-    if (material.current) {
-      material.current.opacity = opacityRef.current;
-      material.current.transparent = opacityRef.current < 0.999;
+    if (colorMaterial.current) {
+      colorMaterial.current.opacity = opacityRef.current;
+      colorMaterial.current.transparent = opacityRef.current < 0.999;
+    }
+    if (texturedMaterial.current) {
+      texturedMaterial.current.opacity = opacityRef.current;
+      texturedMaterial.current.uniforms.materialOpacity.value = opacityRef.current;
+      texturedMaterial.current.transparent = opacityRef.current < 0.999;
     }
   });
 
@@ -377,14 +479,92 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
         mapBounds: manifest.bounds
       }}
     >
-      <meshStandardMaterial
-        ref={material}
-        vertexColors
+      <meshStandardMaterial attach="material-0" ref={colorMaterial} vertexColors roughness={0.92} metalness={0} side={DoubleSide} transparent opacity={0} />
+      <shaderMaterial
+        attach="material-1"
+        ref={texturedMaterial}
         side={DoubleSide}
-        roughness={0.96}
-        metalness={0}
         transparent
         opacity={0}
+        uniforms={{
+          mapTexture: { value: atlasTexture },
+          atlasColumns: { value: manifest.textureAtlas?.columns ?? 1 },
+          atlasRows: { value: manifest.textureAtlas?.rows ?? 1 },
+          atlasTileSize: { value: manifest.textureAtlas?.tileSize ?? 1 },
+          materialOpacity: { value: opacityRef.current }
+        }}
+        vertexShader={`
+          attribute vec3 color;
+          attribute vec2 atlasUv;
+          attribute float textureMix;
+          varying vec3 vColor;
+          varying vec2 vAtlasUv;
+          varying float vTextureMix;
+
+          void main() {
+            vColor = color;
+            vAtlasUv = atlasUv;
+            vTextureMix = textureMix;
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `}
+        fragmentShader={`
+          uniform sampler2D mapTexture;
+          uniform float atlasColumns;
+          uniform float atlasRows;
+          uniform float atlasTileSize;
+          uniform float materialOpacity;
+          varying vec3 vColor;
+          varying vec2 vAtlasUv;
+          varying float vTextureMix;
+
+          bool isFoliageLayer(float layer) {
+            return abs(layer - 9.0) < 0.5 ||
+              abs(layer - 29.0) < 0.5 ||
+              abs(layer - 31.0) < 0.5 ||
+              abs(layer - 34.0) < 0.5 ||
+              abs(layer - 42.0) < 0.5 ||
+              abs(layer - 58.0) < 0.5 ||
+              abs(layer - 60.0) < 0.5 ||
+              abs(layer - 123.0) < 0.5 ||
+              abs(layer - 124.0) < 0.5 ||
+              abs(layer - 127.0) < 0.5 ||
+              abs(layer - 128.0) < 0.5 ||
+              abs(layer - 190.0) < 0.5 ||
+              abs(layer - 192.0) < 0.5 ||
+              abs(layer - 194.0) < 0.5 ||
+              abs(layer - 196.0) < 0.5 ||
+              abs(layer - 198.0) < 0.5 ||
+              abs(layer - 199.0) < 0.5 ||
+              abs(layer - 200.0) < 0.5 ||
+              abs(layer - 202.0) < 0.5 ||
+              abs(layer - 203.0) < 0.5 ||
+              abs(layer - 204.0) < 0.5 ||
+              abs(layer - 207.0) < 0.5;
+          }
+
+          void main() {
+            float textureLayer = floor(vTextureMix + 0.5);
+            float column = mod(textureLayer, atlasColumns);
+            float row = floor(textureLayer / atlasColumns);
+            float tileInset = 0.5 / atlasTileSize;
+            vec2 localUv = tileInset + fract(vAtlasUv) * (1.0 - tileInset * 2.0);
+            vec2 atlasUv = vec2((column + localUv.x) / atlasColumns, (row + localUv.y) / atlasRows);
+            vec4 textureColor = texture2D(mapTexture, atlasUv);
+            bool foliageMatte = isFoliageLayer(textureLayer) &&
+              textureColor.r > 0.9 &&
+              textureColor.g > 0.9 &&
+              textureColor.b > 0.9;
+            if (textureColor.a < 0.01 || foliageMatte) {
+              discard;
+            }
+            gl_FragColor = vec4(textureColor.rgb * vColor, materialOpacity);
+            if (gl_FragColor.a < 0.01) {
+              discard;
+            }
+          }
+        `}
       />
     </mesh>
   );
@@ -396,7 +576,12 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const focusActivity = useMapStore((state) => state.focusActivity);
   const selected = selectedActivityId === activity.id;
-  const color = activity.status === "blocked" ? "#7b858d" : activity.type === "boss" ? "#f06b6b" : activity.type === "money" ? "#63d7a6" : "#79a7ff";
+  const color =
+    activity.type === "money"
+      ? "#d9b86c"
+      : activity.type === "boss"
+        ? "#ef766f"
+        : "#63d7a6";
   const point = useRef(new Vector3());
 
   useFrame(({ clock }) => {
@@ -457,19 +642,18 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
 
 function ActivityMarkers({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
   const player = useMapStore((state) => state.player);
-  const activeLayer = useMapStore((state) => state.activeLayer);
   const visibleActivities = useMemo(
-    () => (player ? getVisibleActivities(getActivities({ player }), activeLayer) : []),
-    [activeLayer, player]
+    () => (player ? (["quest", "money", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
+    [player]
   );
 
   useEffect(() => {
     (window as ObservatoryDebugWindow).__OBSERVATORY_ACTIVITY_MARKERS__ = {
-      activeLayer,
+      activeLayer: "available",
       ids: visibleActivities.map((activity) => activity.id),
       count: visibleActivities.length
     };
-  }, [activeLayer, visibleActivities]);
+  }, [visibleActivities]);
 
   return (
     <group>

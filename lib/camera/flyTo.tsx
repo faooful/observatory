@@ -3,6 +3,7 @@
 import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import type { Camera } from "three";
 import { MathUtils, Material, Object3D, Raycaster, Vector2, Vector3 } from "three";
 import { useMapStore } from "@/lib/store/useMapStore";
 import type { OsrsProjectionSettings, OsrsSceneLodThresholds } from "@/lib/osrs-scene/types";
@@ -35,14 +36,14 @@ type CameraPhase = "globe" | "transition" | "local";
 
 const SETTLE_DELAY_MS = 360;
 const WHEEL_SETTLE_DELAY_MS = 1600;
-const WHEEL_ANCHOR_LOCK_MS = 15000;
-const WHEEL_ANCHOR_POINTER_PX = 96;
 const MIN_FLIGHT_MS = 1250;
 const MAX_FLIGHT_MS = 2600;
-const WHEEL_ZOOM_SENSITIVITY = 0.00078;
-const MAX_WHEEL_ZOOM_STEP = 0.07;
+const WHEEL_ZOOM_SENSITIVITY = 0.00062;
+const MAX_WHEEL_ZOOM_STEP = 0.065;
 const IDLE_SPIN_DELAY_MS = 1100;
 const IDLE_SPIN_SPEED = 0.035;
+const LOCAL_MAP_DIRECTION_Y = 0.78;
+const WHEEL_UI_BLOCK_SELECTOR = ".sidebar, .overlay-shell, .activity-dock, .right-panel";
 
 type CameraFlight = {
   startedAt: number;
@@ -55,9 +56,23 @@ type CameraFlight = {
   toTarget: Vector3;
 };
 
+type MapSurfaceHit = {
+  intersection: {
+    distance: number;
+    face?: { normal: Vector3 } | null;
+    object: Object3D;
+    point: Vector3;
+  };
+  facing: number;
+  priority: number;
+  surface: Object3D;
+};
+
 type ObservatoryDebugWindow = Window & {
   __OBSERVATORY_CAMERA__?: {
+    directionY: number;
     distance: number;
+    globeBlend: number;
     position: [number, number, number];
     target: [number, number, number];
     wheelEvents: number;
@@ -65,6 +80,7 @@ type ObservatoryDebugWindow = Window & {
     wheelFallbacks: number;
     wheelDelta: number;
     projectionMorph: number;
+    compassAngle: number;
     phase: CameraPhase;
     lastWheelAnchorWorld?: [number, number];
     lastWheelAnchorCorrection?: [number, number, number];
@@ -83,14 +99,38 @@ function getCameraPhase(distance: number, radius: number): CameraPhase {
   return "local";
 }
 
-function getSettledPosition(target: Vector3, distance: number, localBlend: number) {
-  const offset = new Vector3(
-    0,
-    MathUtils.lerp(0.72, 0.96, localBlend),
-    MathUtils.lerp(0.56, 0.24, localBlend)
-  ).setLength(distance);
+function getMapViewBlend(distance: number, radius: number) {
+  return 1 - MathUtils.smoothstep(distance, radius * 0.44, radius * 2.35);
+}
 
-  return target.clone().add(offset);
+function getWheelMapAngleBlend(distance: number, radius: number, morph: number) {
+  return Math.max(
+    MathUtils.smoothstep(morph, 0.06, 0.72),
+    1 - MathUtils.smoothstep(distance, radius * 2.18, radius * 3.35)
+  );
+}
+
+function getWheelGlobeBlend(distance: number, radius: number, morph: number) {
+  return Math.max(
+    1 - MathUtils.smoothstep(morph, 0.04, 0.68),
+    MathUtils.smoothstep(distance, radius * 2.15, radius * 3.15)
+  );
+}
+
+function getDirectionWithVertical(source: Vector3, vertical: number, target = new Vector3()) {
+  const y = MathUtils.clamp(vertical, 0.05, 0.98);
+  const horizontal = Math.sqrt(1 - y * y);
+  target.set(source.x, 0, source.z);
+
+  if (target.lengthSq() < 0.0001) {
+    target.set(0, 0, 1);
+  }
+
+  return target.normalize().multiplyScalar(horizontal).setY(y);
+}
+
+function getWrappedAngleDelta(nextAngle: number, currentAngle: number) {
+  return Math.atan2(Math.sin(nextAngle - currentAngle), Math.cos(nextAngle - currentAngle));
 }
 
 function getGlobeCenter(projection: OsrsProjectionSettings | undefined, target = new Vector3()) {
@@ -154,6 +194,56 @@ function getMaterialOpacity(material: unknown) {
   return 1;
 }
 
+function getFacingAmount(hitObject: Object3D, faceNormal: Vector3 | undefined, point: Vector3, cameraPosition: Vector3) {
+  if (!faceNormal) {
+    return 1;
+  }
+
+  const normal = faceNormal.clone().transformDirection(hitObject.matrixWorld);
+  const toCamera = cameraPosition.clone().sub(point).normalize();
+  return normal.dot(toCamera);
+}
+
+function isWheelFromUi(event: WheelEvent) {
+  return event.target instanceof Element && Boolean(event.target.closest(WHEEL_UI_BLOCK_SELECTOR));
+}
+
+function correctCameraForCursorAnchor(
+  sourceCamera: Camera,
+  position: Vector3,
+  target: Vector3,
+  anchor: Vector3,
+  ndc: Vector2,
+  scratchCamera: Camera,
+  projectedScratch: Vector3,
+  desiredScratch: Vector3,
+  strength = 1
+) {
+  if (strength <= 0) {
+    return;
+  }
+
+  scratchCamera.copy(sourceCamera);
+  scratchCamera.position.copy(position);
+  scratchCamera.up.copy(sourceCamera.up);
+  scratchCamera.lookAt(target);
+  scratchCamera.updateMatrixWorld(true);
+
+  projectedScratch.copy(anchor).project(scratchCamera);
+  if (
+    !Number.isFinite(projectedScratch.x) ||
+    !Number.isFinite(projectedScratch.y) ||
+    !Number.isFinite(projectedScratch.z)
+  ) {
+    return;
+  }
+
+  desiredScratch.set(ndc.x, ndc.y, projectedScratch.z).unproject(scratchCamera);
+  desiredScratch.subVectors(anchor, desiredScratch).multiplyScalar(MathUtils.clamp(strength, 0, 1));
+  position.add(desiredScratch);
+  target.add(desiredScratch);
+}
+
 export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorldTarget, projection, lod }: CameraRigProps) {
   const camera = useThree((state) => state.camera);
   const gl = useThree((state) => state.gl);
@@ -165,12 +255,33 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   const flightTargetScratch = useRef(new Vector3());
   const wheelPointerScratch = useRef(new Vector2());
   const wheelRaycaster = useRef(new Raycaster());
-  const lastWheelClient = useRef(new Vector2(Number.NaN, Number.NaN));
   const wheelPositionScratch = useRef(new Vector3());
   const wheelTargetScratch = useRef(new Vector3());
   const wheelAnchor = useRef(new Vector3());
+  const wheelNextAnchorScratch = useRef(new Vector3());
+  const wheelAnchorNdc = useRef(new Vector2());
+  const wheelDirectionScratch = useRef(new Vector3());
+  const wheelSettledDirectionScratch = useRef(new Vector3());
+  const wheelProjectedScratch = useRef(new Vector3());
+  const wheelDesiredScratch = useRef(new Vector3());
+  const wheelGlobeAnchorScratch = useRef(new Vector3());
+  const wheelGlobeCenterScratch = useRef(new Vector3());
+  const wheelGlobeDirectionScratch = useRef(new Vector3());
+  const wheelGlobePositionScratch = useRef(new Vector3());
+  const wheelCameraScratch = useRef(camera.clone());
+  const compassOriginScratch = useRef(new Vector3());
+  const compassNorthScratch = useRef(new Vector3());
+  const compassOriginNdcScratch = useRef(new Vector3());
+  const compassNorthNdcScratch = useRef(new Vector3());
+  const lastCompassAngle = useRef(0);
   const lastWheelAnchorWorld = useRef<OsrsWorldPoint | null>(null);
   const lastWheelAnchorCorrection = useRef(new Vector3());
+  const cameraTargetWorld = useRef<OsrsWorldPoint>(
+    defaultWorldTarget ?? {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2
+    }
+  );
   const wheelZoomDelta = useRef(0);
   const wheelEvents = useRef(0);
   const wheelHits = useRef(0);
@@ -178,6 +289,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   const selectedPinId = useMapStore((state) => state.selectedPinId);
   const focusRequest = useMapStore((state) => state.focusRequest);
   const viewVersion = useMapStore((state) => state.viewVersion);
+  const rotationRequest = useMapStore((state) => state.rotationRequest);
   const activeRadius = Math.max(bounds.width, bounds.depth);
   const initialGlobeSurfacePoint = useMemo(() => {
     if (!defaultWorldTarget) {
@@ -212,51 +324,40 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
       return false;
     }
 
-    const now = performance.now();
-    const isContinuousWheel =
-      now - lastWheelAt.current < WHEEL_ANCHOR_LOCK_MS &&
-      Number.isFinite(lastWheelClient.current.x) &&
-      lastWheelClient.current.distanceTo(wheelPointerScratch.current.set(clientX, clientY)) < WHEEL_ANCHOR_POINTER_PX &&
-      lastWheelAnchorWorld.current !== null;
-
     activeFlight.current = null;
     isProgrammaticFlight.current = false;
     wheelEvents.current += 1;
-    lastWheelAt.current = now;
-    lastWheelClient.current.set(clientX, clientY);
+    lastWheelAt.current = performance.now();
 
     wheelPointerScratch.current.set(
       ((clientX - rect.left) / rect.width) * 2 - 1,
       -(((clientY - rect.top) / rect.height) * 2 - 1)
     );
+    wheelAnchorNdc.current.copy(wheelPointerScratch.current);
     wheelRaycaster.current.setFromCamera(wheelPointerScratch.current, camera);
 
     const intersections = wheelRaycaster.current.intersectObjects(scene.children, true)
       .map((intersection) => {
         const surface = findMapSurface(intersection.object);
-        return surface ? { intersection, surface } : null;
+        if (!surface) {
+          return null;
+        }
+        return {
+          intersection,
+          facing: getFacingAmount(intersection.object, intersection.face?.normal, intersection.point, camera.position),
+          priority: surface.userData.mapSurfacePriority ?? 0,
+          surface
+        } satisfies MapSurfaceHit;
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
+      .filter(({ facing }) => facing > 0.02)
       .filter(({ intersection }) => getObjectOpacity(intersection.object) > 0.012)
       .sort((a, b) => {
-        const priorityA = a.surface.userData.mapSurfacePriority ?? 0;
-        const priorityB = b.surface.userData.mapSurfacePriority ?? 0;
-        return priorityB - priorityA || a.intersection.distance - b.intersection.distance;
+        return a.intersection.distance - b.intersection.distance || b.facing - a.facing || b.priority - a.priority;
       });
 
     const [bestHit] = intersections;
-    if (isContinuousWheel && lastWheelAnchorWorld.current) {
-      const anchorWorld = lastWheelAnchorWorld.current;
-      mapWorldToSurface(
-        anchorWorld.x,
-        anchorWorld.y,
-        bounds,
-        projection,
-        currentMorph,
-        OVERVIEW_PLANE_Y,
-        wheelAnchor.current
-      );
-    } else if (bestHit) {
+    if (bestHit) {
       const surfaceMorph = typeof bestHit.surface.userData.surfaceMorph === "number"
         ? bestHit.surface.userData.surfaceMorph
         : currentMorph;
@@ -279,26 +380,14 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         wheelAnchor.current
       );
     } else {
-      const fallbackWorld =
-        lastWheelAnchorWorld.current ??
-        surfaceToMapWorld(currentTarget, bounds, projection, currentMorph, OVERVIEW_PLANE_Y);
       wheelFallbacks.current += 1;
-      lastWheelAnchorWorld.current = fallbackWorld;
-      mapWorldToSurface(
-        fallbackWorld.x,
-        fallbackWorld.y,
-        bounds,
-        projection,
-        currentMorph,
-        OVERVIEW_PLANE_Y,
-        wheelAnchor.current
-      );
+      return false;
     }
 
     wheelZoomDelta.current = MathUtils.clamp(
       wheelZoomDelta.current + deltaY * WHEEL_ZOOM_SENSITIVITY,
-      -0.72,
-      0.72
+      -0.58,
+      0.58
     );
     lastControlAt.current = performance.now();
     return true;
@@ -331,6 +420,21 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
 
     const fromPosition = currentControls.getPosition(new Vector3());
     const fromTarget = currentControls.getTarget(new Vector3());
+    if (fromPosition.distanceTo(position) < 0.5 && fromTarget.distanceTo(target) < 0.5) {
+      void currentControls.setLookAt(
+        position.x,
+        position.y,
+        position.z,
+        target.x,
+        target.y,
+        target.z,
+        false
+      );
+      activeFlight.current = null;
+      isProgrammaticFlight.current = false;
+      return;
+    }
+
     const horizontalDistance = Math.hypot(target.x - fromTarget.x, target.z - fromTarget.z);
     const fromDistance = fromPosition.distanceTo(fromTarget);
     const toDistance = position.distanceTo(target);
@@ -373,17 +477,41 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   }, [activeRadius, camera]);
 
   useEffect(() => {
+    cameraTargetWorld.current = defaultWorldTarget ?? {
+      x: (bounds.minX + bounds.maxX) / 2,
+      y: (bounds.minY + bounds.maxY) / 2
+    };
+  }, [bounds.maxX, bounds.maxY, bounds.minX, bounds.minY, defaultWorldTarget]);
+
+  useEffect(() => {
     const focusTarget = focusRequest ?? selectedPin;
 
     if (!focusTarget) {
-      flyTo(initialPosition, initialTarget, true);
+      flyTo(initialPosition, initialTarget, false);
       return;
     }
 
     const target = mapWorldToSurface(focusTarget.x, focusTarget.y, bounds, projection, 1).setY(1.4);
     const position = target.clone().add(new Vector3(0, 242, 164));
+    cameraTargetWorld.current = { x: focusTarget.x, y: focusTarget.y };
     flyTo(position, target, true);
   }, [bounds, flyTo, focusRequest, initialPosition, initialTarget, projection, selectedPin, viewVersion]);
+
+  useEffect(() => {
+    if (!rotationRequest || Math.abs(rotationRequest.deltaRadians) < 0.0001) {
+      return;
+    }
+
+    const currentControls = controls.current;
+    if (!currentControls) {
+      return;
+    }
+
+    activeFlight.current = null;
+    isProgrammaticFlight.current = false;
+    lastControlAt.current = performance.now();
+    void currentControls.rotate(rotationRequest.deltaRadians, 0, false);
+  }, [rotationRequest]);
 
   useLayoutEffect(() => {
     flyTo(initialPosition, initialTarget, false);
@@ -396,6 +524,10 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
     const ownerWindow = element.ownerDocument.defaultView ?? window;
 
     const handleWheel = (event: WheelEvent) => {
+      if (isWheelFromUi(event)) {
+        return;
+      }
+
       if (enqueueWheelZoom(event.clientX, event.clientY, event.deltaY)) {
         event.preventDefault();
         event.stopPropagation();
@@ -461,9 +593,18 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
       const currentMorph = getProjectionMorph(currentDistance, bounds, lod);
       const currentDirection = currentPosition.clone().sub(currentTarget).normalize();
       const anchorWorld = lastWheelAnchorWorld.current ?? surfaceToMapWorld(anchor, bounds, projection, currentMorph, OVERVIEW_PLANE_Y);
-      const nextPosition = anchor.clone().add(currentPosition.sub(anchor).multiplyScalar(zoomScale));
-      const nextTarget = anchor.clone().add(currentTarget.sub(anchor).multiplyScalar(zoomScale));
-      const nextDistance = nextPosition.distanceTo(nextTarget);
+      mapWorldToSurface(
+        anchorWorld.x,
+        anchorWorld.y,
+        bounds,
+        projection,
+        currentMorph,
+        OVERVIEW_PLANE_Y,
+        anchor
+      );
+      const nextPosition = anchor.clone().add(currentPosition.clone().sub(anchor).multiplyScalar(zoomScale));
+      const nextTarget = anchor.clone().add(currentTarget.clone().sub(anchor).multiplyScalar(zoomScale));
+      const nextDistance = MathUtils.clamp(nextPosition.distanceTo(nextTarget), 42, activeRadius * 4.2);
       const nextMorph = getProjectionMorph(nextDistance, bounds, lod);
       const nextAnchor = getSurfacePointFromUv(
         MathUtils.clamp((anchorWorld.x - bounds.minX) / bounds.width, 0, 1),
@@ -471,9 +612,10 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         bounds,
         projection,
         nextMorph,
-        OVERVIEW_PLANE_Y
+        OVERVIEW_PLANE_Y,
+        wheelNextAnchorScratch.current
       );
-      const anchorCorrection = nextAnchor.sub(anchor);
+      const anchorCorrection = nextAnchor.clone().sub(anchor);
       lastWheelAnchorWorld.current = anchorWorld;
       lastWheelAnchorCorrection.current.copy(anchorCorrection);
       nextPosition.add(anchorCorrection);
@@ -486,14 +628,53 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         nextPosition.y += targetSurfaceDelta;
       }
 
-      const globeSurfaceBlend = 1 - MathUtils.smoothstep(nextMorph, 0.04, 0.28);
-      if (globeSurfaceBlend > 0) {
-        const targetShift = getGlobeCenter(projection).sub(nextTarget).multiplyScalar(globeSurfaceBlend);
-        nextTarget.add(targetShift);
-        nextPosition.add(targetShift);
+      const globeBlend = getWheelGlobeBlend(nextDistance, activeRadius, nextMorph);
+      const nextDirection = wheelDirectionScratch.current.copy(currentDirection);
+      const consistentAngleBlend = getWheelMapAngleBlend(nextDistance, activeRadius, nextMorph) * (1 - globeBlend);
+      if (consistentAngleBlend > 0) {
+        const settledDirection = getDirectionWithVertical(
+          nextDirection,
+          LOCAL_MAP_DIRECTION_Y,
+          wheelSettledDirectionScratch.current
+        );
+        nextDirection.lerp(settledDirection, consistentAngleBlend).normalize();
+        nextPosition.copy(nextTarget).addScaledVector(nextDirection, nextDistance);
       }
 
-      nextPosition.copy(nextTarget).addScaledVector(currentDirection, nextDistance);
+      if (globeBlend > 0 && projection) {
+        const globeCenter = getGlobeCenter(projection, wheelGlobeCenterScratch.current);
+        const globeDirection = wheelGlobeDirectionScratch.current.subVectors(currentPosition, globeCenter);
+        if (globeDirection.lengthSq() < 0.0001) {
+          const globeAnchor = mapWorldToSurface(
+            anchorWorld.x,
+            anchorWorld.y,
+            bounds,
+            projection,
+            0,
+            OVERVIEW_PLANE_Y,
+            wheelGlobeAnchorScratch.current
+          );
+          globeDirection.subVectors(globeAnchor, globeCenter);
+        }
+        globeDirection.normalize();
+        const globePosition = wheelGlobePositionScratch.current.copy(globeCenter).addScaledVector(globeDirection, nextDistance);
+        nextTarget.lerp(globeCenter, globeBlend);
+        nextPosition.lerp(globePosition, globeBlend);
+      }
+
+      correctCameraForCursorAnchor(
+        camera,
+        nextPosition,
+        nextTarget,
+        nextAnchor,
+        wheelAnchorNdc.current,
+        wheelCameraScratch.current,
+        wheelProjectedScratch.current,
+        wheelDesiredScratch.current,
+        1 - globeBlend
+      );
+
+      cameraTargetWorld.current = surfaceToMapWorld(nextTarget, bounds, projection, nextMorph, OVERVIEW_PLANE_Y);
 
       if (nextDistance >= 42 && nextDistance <= activeRadius * 4.2) {
         void currentControls.setLookAt(
@@ -551,15 +732,79 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
     const distance = debugPosition.distanceTo(debugTarget);
     const phase = getCameraPhase(distance, activeRadius);
     const projectionMorph = getProjectionMorph(distance, bounds, lod);
-    const mapViewBlend = 1 - MathUtils.smoothstep(distance, activeRadius * 0.44, activeRadius * 2.35);
-    const isGlobe = phase === "globe";
+    const compassWorldTarget = surfaceToMapWorld(debugTarget, bounds, projection, projectionMorph, OVERVIEW_PLANE_Y);
+    const compassStep = Math.max(bounds.depth * 0.025, 24);
+    const northWorldY = MathUtils.clamp(compassWorldTarget.y + compassStep, bounds.minY, bounds.maxY);
+    const compassOrigin = mapWorldToSurface(
+      compassWorldTarget.x,
+      compassWorldTarget.y,
+      bounds,
+      projection,
+      projectionMorph,
+      OVERVIEW_PLANE_Y,
+      compassOriginScratch.current
+    );
+    let compassNorth = compassNorthScratch.current;
+    let invertCompassVector = false;
+
+    if (northWorldY > compassWorldTarget.y + 0.001) {
+      compassNorth = mapWorldToSurface(
+        compassWorldTarget.x,
+        northWorldY,
+        bounds,
+        projection,
+        projectionMorph,
+        OVERVIEW_PLANE_Y,
+        compassNorthScratch.current
+      );
+    } else {
+      const southWorldY = MathUtils.clamp(compassWorldTarget.y - compassStep, bounds.minY, bounds.maxY);
+      compassNorth = mapWorldToSurface(
+        compassWorldTarget.x,
+        southWorldY,
+        bounds,
+        projection,
+        projectionMorph,
+        OVERVIEW_PLANE_Y,
+        compassNorthScratch.current
+      );
+      invertCompassVector = true;
+    }
+
+    const compassOriginNdc = compassOriginNdcScratch.current.copy(compassOrigin).project(camera);
+    const compassNorthNdc = compassNorthNdcScratch.current.copy(compassNorth).project(camera);
+    const compassDx = invertCompassVector
+      ? compassOriginNdc.x - compassNorthNdc.x
+      : compassNorthNdc.x - compassOriginNdc.x;
+    const compassDy = invertCompassVector
+      ? compassOriginNdc.y - compassNorthNdc.y
+      : compassNorthNdc.y - compassOriginNdc.y;
+    if (
+      Number.isFinite(compassDx) &&
+      Number.isFinite(compassDy) &&
+      Math.hypot(compassDx, compassDy) > 0.0001
+    ) {
+      const compassAngle = Math.atan2(compassDx, compassDy);
+      if (Math.abs(getWrappedAngleDelta(compassAngle, lastCompassAngle.current)) > 0.006) {
+        lastCompassAngle.current = compassAngle;
+        useMapStore.getState().setCompassAngle(compassAngle);
+      }
+    }
+
+    const mapViewBlend = getMapViewBlend(distance, activeRadius);
+    const globeBlend = getWheelGlobeBlend(distance, activeRadius, projectionMorph);
+    const isGlobeInteraction = globeBlend > 0.85 && projectionMorph < 0.12;
     const action = CameraControlsImpl.ACTION;
 
-    currentControls.mouseButtons.left = isGlobe ? action.ROTATE : action.TRUCK;
+    if (mapViewBlend > 0.22 && Math.abs(wheelZoomDelta.current) < 0.0001) {
+      cameraTargetWorld.current = surfaceToMapWorld(debugTarget, bounds, projection, projectionMorph, OVERVIEW_PLANE_Y);
+    }
+
+    currentControls.mouseButtons.left = isGlobeInteraction ? action.ROTATE : action.TRUCK;
     currentControls.mouseButtons.middle = action.DOLLY;
     currentControls.mouseButtons.right = action.TRUCK;
     currentControls.mouseButtons.wheel = action.NONE;
-    currentControls.touches.one = isGlobe ? action.TOUCH_ROTATE : action.TOUCH_TRUCK;
+    currentControls.touches.one = isGlobeInteraction ? action.TOUCH_ROTATE : action.TOUCH_TRUCK;
     currentControls.touches.two = action.TOUCH_DOLLY_TRUCK;
     currentControls.minPolarAngle = MathUtils.degToRad(MathUtils.lerp(18, 0, mapViewBlend));
     currentControls.maxPolarAngle = MathUtils.degToRad(MathUtils.lerp(162, 74, mapViewBlend));
@@ -583,13 +828,15 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
       void currentControls.rotate(IDLE_SPIN_SPEED * delta, 0, false);
     }
 
-    if (isGlobe || isUserControlling.current || performance.now() - lastControlAt.current < SETTLE_DELAY_MS) {
+    if (phase === "globe" || isUserControlling.current || performance.now() - lastControlAt.current < SETTLE_DELAY_MS) {
       lastSettledDistance.current = distance;
     }
 
     if (window.location.search.includes("debugZoom=1")) {
       (window as ObservatoryDebugWindow).__OBSERVATORY_CAMERA__ = {
+        directionY: debugPosition.clone().sub(debugTarget).normalize().y,
         distance,
+        globeBlend,
         position: debugPosition.toArray() as [number, number, number],
         target: debugTarget.toArray() as [number, number, number],
         wheelEvents: wheelEvents.current,
@@ -597,6 +844,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         wheelFallbacks: wheelFallbacks.current,
         wheelDelta: wheelZoomDelta.current,
         projectionMorph,
+        compassAngle: lastCompassAngle.current,
         phase,
         lastWheelAnchorWorld: lastWheelAnchorWorld.current
           ? [lastWheelAnchorWorld.current.x, lastWheelAnchorWorld.current.y]
@@ -604,7 +852,9 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         lastWheelAnchorCorrection: lastWheelAnchorCorrection.current.toArray() as [number, number, number]
       };
       document.documentElement.dataset.observatoryCamera = JSON.stringify({
+        directionY: debugPosition.clone().sub(debugTarget).normalize().y,
         distance,
+        globeBlend,
         position: debugPosition.toArray(),
         target: debugTarget.toArray(),
         wheelEvents: wheelEvents.current,
@@ -612,6 +862,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         wheelFallbacks: wheelFallbacks.current,
         wheelDelta: wheelZoomDelta.current,
         projectionMorph,
+        compassAngle: lastCompassAngle.current,
         phase,
         lastWheelAnchorWorld: lastWheelAnchorWorld.current
           ? [lastWheelAnchorWorld.current.x, lastWheelAnchorWorld.current.y]
@@ -659,39 +910,9 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
         const target = currentControls.getTarget(targetScratch.current);
         const currentPosition = currentControls.getPosition(positionScratch.current);
         const distance = currentPosition.distanceTo(target);
-        const phase = getCameraPhase(distance, activeRadius);
-        const mapViewBlend = 1 - MathUtils.smoothstep(distance, activeRadius * 0.44, activeRadius * 2.35);
-        const localBlend = 1 - MathUtils.smoothstep(distance, activeRadius * 0.28, activeRadius * 0.82);
-        if (isProgrammaticFlight.current || activeFlight.current) {
-          return;
-        }
-
-        isProgrammaticFlight.current = false;
+        const projectionMorph = getProjectionMorph(distance, bounds, lod);
+        cameraTargetWorld.current = surfaceToMapWorld(target, bounds, projection, projectionMorph, OVERVIEW_PLANE_Y);
         lastSettledDistance.current = distance;
-
-        if (
-          phase === "globe" ||
-          mapViewBlend <= 0.08 ||
-          performance.now() - lastControlAt.current < SETTLE_DELAY_MS ||
-          performance.now() - lastWheelAt.current < WHEEL_SETTLE_DELAY_MS
-        ) {
-          return;
-        }
-
-        const position = getSettledPosition(target, distance, localBlend);
-        if (currentPosition.distanceTo(position) < 0.35) {
-          return;
-        }
-
-        void currentControls.setLookAt(
-          position.x,
-          position.y,
-          position.z,
-          target.x,
-          target.y,
-          target.z,
-          true
-        );
       }}
     />
   );

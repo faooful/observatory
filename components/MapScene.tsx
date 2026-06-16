@@ -3,22 +3,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { CameraRig } from "@/lib/camera/flyTo";
-import { getActivities, getVisibleActivities } from "@/lib/activities/activityModel";
+import { getTabActivities } from "@/lib/activities/activityModel";
 import type { OsrsSceneManifest } from "@/lib/osrs-scene/types";
 import { useMapStore } from "@/lib/store/useMapStore";
 import type { TerrainBounds } from "@/lib/terrain/loadTerrain";
 import { OsrsCacheScene } from "./OsrsCacheScene";
 
 const sceneBounds: TerrainBounds = {
-  minX: 3072,
-  maxX: 3456,
-  minY: 2752,
-  maxY: 3264,
-  centerX: 3264,
+  minX: 960,
+  maxX: 4224,
+  minY: 1728,
+  maxY: 4288,
+  centerX: 2592,
   centerY: 3008,
-  width: 384,
-  depth: 512
+  width: 3264,
+  depth: 2560
 };
+const sceneProjection: OsrsSceneManifest["projection"] = {
+  type: "globe-to-plane",
+  radius: 1566.72,
+  worldWidth: 3264,
+  worldDepth: 2560,
+  latitudeLimit: 1.4765485471872026
+};
+const sceneLod: OsrsSceneManifest["lod"] = {
+  globeDistance: 5875.2,
+  planeDistance: 4406.400000000001,
+  closeDistance: 520,
+  closeChunkRadius: 2
+};
+
 function getManifestBounds(manifest: OsrsSceneManifest): TerrainBounds {
   const width = manifest.bounds.maxX - manifest.bounds.minX;
   const depth = manifest.bounds.maxY - manifest.bounds.minY;
@@ -56,10 +70,9 @@ type ActivityDebugWindow = Window & {
 export function MapScene() {
   const [manifest, setManifest] = useState<OsrsSceneManifest | null>(null);
   const player = useMapStore((state) => state.player);
-  const activeLayer = useMapStore((state) => state.activeLayer);
-  const visibleActivities = useMemo(
-    () => (player ? getVisibleActivities(getActivities({ player }), activeLayer) : []),
-    [activeLayer, player]
+  const visibleAvailableActivities = useMemo(
+    () => (player ? (["quest", "money", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
+    [player]
   );
   const activeBounds = useMemo(() => (manifest ? getManifestBounds(manifest) : sceneBounds), [manifest]);
   const activeTarget = useMemo<[number, number, number]>(
@@ -71,9 +84,9 @@ export function MapScene() {
 
   useEffect(() => {
     const snapshot = {
-      activeLayer,
-      ids: visibleActivities.map((activity) => activity.id),
-      count: visibleActivities.length
+      activeLayer: "available",
+      ids: visibleAvailableActivities.map((activity) => activity.id),
+      count: visibleAvailableActivities.length
     };
     (window as ActivityDebugWindow).__OBSERVATORY_ACTIVITY_MARKERS__ = {
       activeLayer: snapshot.activeLayer,
@@ -81,7 +94,7 @@ export function MapScene() {
       count: snapshot.count
     };
     document.documentElement.dataset.activityMarkers = JSON.stringify(snapshot);
-  }, [activeLayer, visibleActivities]);
+  }, [visibleAvailableActivities]);
 
   return (
     <div className="map-canvas">
@@ -110,15 +123,15 @@ export function MapScene() {
         <CameraClip far={activeRadius * 12} />
         <CameraRig
           bounds={activeBounds}
-          pins={visibleActivities.map((activity) => ({
+          pins={visibleAvailableActivities.map((activity) => ({
             id: activity.id,
             x: activity.location.x,
             y: activity.location.y
           }))}
           defaultTarget={activeTarget}
           defaultWorldTarget={activeWorldTarget}
-          projection={manifest?.projection}
-          lod={manifest?.lod}
+          projection={manifest?.projection ?? sceneProjection}
+          lod={manifest?.lod ?? sceneLod}
         />
       </Canvas>
     </div>

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
@@ -7,6 +7,10 @@ const CACHE_ID = 2565;
 const CACHE_NAME = "osrs-238_2026-06-03";
 const CACHE_VERSION = "osrs-238_2026-06-03";
 const SURFACE_MAP_Y_MAX = 99;
+const SURFACE_MAP_X_MIN = 15;
+const SURFACE_MAP_X_MAX = 65;
+const SURFACE_MAP_Y_MIN = 27;
+const SURFACE_MAP_Y_SURFACE_MAX = 66;
 const PLANE_TILE_MAP_SQUARES = 8;
 const GLOBE_TILE_SIZE = 32;
 
@@ -15,6 +19,8 @@ const cacheRoot = resolve(root, ".cache");
 const rsRepo = join(cacheRoot, "rs-map-viewer");
 const exportScriptPath = join(rsRepo, "scripts", "cache", "export-observatory-scene.ts");
 const outputDir = join(root, "public", "osrs-scene", CACHE_VERSION);
+
+const rangeOnly = process.env.OSRS_EXPORT_RANGE_ONLY === "1";
 
 function run(command: string, args: string[], cwd = root) {
   console.log(`$ ${command} ${args.join(" ")}`);
@@ -91,8 +97,27 @@ const CACHE_NAME = "${CACHE_NAME}";
 const CACHE_VERSION = "${CACHE_VERSION}";
 const OUTPUT_DIR = ${JSON.stringify(outputDir)};
 const SURFACE_MAP_Y_MAX = ${SURFACE_MAP_Y_MAX};
+const SURFACE_MAP_X_MIN = ${SURFACE_MAP_X_MIN};
+const SURFACE_MAP_X_MAX = ${SURFACE_MAP_X_MAX};
+const SURFACE_MAP_Y_MIN = ${SURFACE_MAP_Y_MIN};
+const SURFACE_MAP_Y_SURFACE_MAX = ${SURFACE_MAP_Y_SURFACE_MAX};
 const PLANE_TILE_MAP_SQUARES = ${PLANE_TILE_MAP_SQUARES};
 const GLOBE_TILE_SIZE = ${GLOBE_TILE_SIZE};
+
+function getOptionalIntEnv(name: string) {
+  const value = process.env[name];
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+const EXPORT_RANGE_ONLY = process.env.OSRS_EXPORT_RANGE_ONLY === "1";
+const EXPORT_FROM_X = getOptionalIntEnv("OSRS_EXPORT_FROM_X");
+const EXPORT_FROM_Y = getOptionalIntEnv("OSRS_EXPORT_FROM_Y");
+const EXPORT_TO_X = getOptionalIntEnv("OSRS_EXPORT_TO_X");
+const EXPORT_TO_Y = getOptionalIntEnv("OSRS_EXPORT_TO_Y");
 const CACHE_DIR = join(process.cwd(), "caches", CACHE_NAME);
 
 type ExportMesh = {
@@ -102,6 +127,8 @@ type ExportMesh = {
   indexCount: number;
   positions: string;
   colors: string;
+  uvs: string;
+  textureIndices: string;
   indices: string;
 };
 
@@ -125,6 +152,16 @@ type OverviewTile = {
   mapYMax: number;
   texture: string;
 };
+
+type TextureAtlas = {
+  texture: string;
+  tileSize: number;
+  columns: number;
+  rows: number;
+  count: number;
+};
+
+type DrawRange = [number, number, number];
 
 function getCacheInfo() {
   return {
@@ -279,7 +316,7 @@ async function createWorkerState(cache: LoadedCache): Promise<WorkerState> {
 
 function hslToRgb(hsl: number, isTextured: boolean) {
   if (isTextured) {
-    const light = Math.max(0.18, Math.min(1, (hsl & 0x7f) / 110));
+    const light = Math.max(0.18, Math.min(1, (hsl & 0x7f) / 127));
     return [light, light, light];
   }
 
@@ -291,42 +328,141 @@ function hslToRgb(hsl: number, isTextured: boolean) {
   ];
 }
 
-function decodeMesh(mapX: number, mapY: number, vertices: Uint8Array, indices: Int32Array): ExportMesh {
+function unpackFloat11(value: number) {
+  return 16 - value / 64;
+}
+
+function decodeVertex(view: DataView, index: number) {
+  const byteOffset = index * 12;
+  const v0 = view.getUint32(byteOffset, true);
+  const v1 = view.getUint32(byteOffset + 4, true);
+  const v2 = view.getUint32(byteOffset + 8, true);
+  const localX = ((v0 >>> 17) & 0x7fff) - 0x4000;
+  const localY = -((v1 & 0x7fff) - 0x4000);
+  const localZ = ((v2 >>> 17) & 0x7fff) - 0x4000;
+  const hsl = (v1 >>> 15) & 0xffff;
+  const isTextured = ((v1 >>> 31) & 0x1) === 1;
+  const alpha = ((v2 >>> 9) & 0xff) / 255;
+  const uPacked = ((v0 >>> 11) & 0x3f) | ((v2 & 0x1f) << 6);
+  const vPacked = v0 & 0x7ff;
+  // rs-map-viewer packs the texture atlas slot, not the original cache texture id.
+  // The shader adds one because atlas layer zero is the untextured white fallback.
+  const packedTextureIndex = (hsl >>> 7) | (((v2 >>> 5) & 0x1) << 9);
+  const textureIndex = isTextured ? packedTextureIndex + 1 : 0;
+
+  return {
+    localX,
+    localY,
+    localZ,
+    hsl,
+    isTextured,
+    alpha,
+    u: unpackFloat11(uPacked),
+    v: unpackFloat11(vPacked),
+    textureIndex,
+  };
+}
+
+function compactVisibleIndices(indices: Int32Array, drawRanges: DrawRange[]): Int32Array {
+  if (drawRanges.length === 0) {
+    return indices;
+  }
+
+  let indexCount = 0;
+  for (const [byteOffset, elements] of drawRanges) {
+    const start = Math.floor(byteOffset / 4);
+    indexCount += Math.max(0, Math.min(elements, indices.length - start));
+  }
+
+  const compact = new Int32Array(indexCount);
+  let cursor = 0;
+  for (const [byteOffset, elements] of drawRanges) {
+    const start = Math.floor(byteOffset / 4);
+    const end = Math.min(indices.length, start + elements);
+    if (end <= start) {
+      continue;
+    }
+    compact.set(indices.subarray(start, end), cursor);
+    cursor += end - start;
+  }
+
+  return cursor === compact.length ? compact : compact.subarray(0, cursor);
+}
+
+function decodeMesh(mapX: number, mapY: number, vertices: Uint8Array, indices: Int32Array, drawRanges: DrawRange[]): ExportMesh {
   const vertexCount = Math.floor(vertices.byteLength / 12);
-  const positions = new Float32Array(vertexCount * 3);
-  const colors = new Float32Array(vertexCount * 4);
+  const positionsPath = "chunks/" + mapX + "_" + mapY + ".positions.bin";
+  const colorsPath = "chunks/" + mapX + "_" + mapY + ".colors.bin";
+  const uvsPath = "chunks/" + mapX + "_" + mapY + ".uvs.bin";
+  const textureIndicesPath = "chunks/" + mapX + "_" + mapY + ".texture-indices.bin";
+  const indicesPath = "chunks/" + mapX + "_" + mapY + ".indices.bin";
+  const visibleIndices = compactVisibleIndices(indices, drawRanges);
+
+  if (vertexCount === 0 || visibleIndices.length === 0) {
+    return {
+      mapX,
+      mapY,
+      vertexCount,
+      indexCount: visibleIndices.length,
+      positions: positionsPath,
+      colors: colorsPath,
+      uvs: uvsPath,
+      textureIndices: textureIndicesPath,
+      indices: indicesPath,
+    };
+  }
+
+  const remap = new Map<number, number>();
+  const compactIndices = new Int32Array(visibleIndices.length);
+  for (let index = 0; index < visibleIndices.length; index += 1) {
+    const sourceIndex = visibleIndices[index];
+    let targetIndex = remap.get(sourceIndex);
+    if (targetIndex === undefined) {
+      targetIndex = remap.size;
+      remap.set(sourceIndex, targetIndex);
+    }
+    compactIndices[index] = targetIndex;
+  }
+
+  const compactVertexCount = remap.size;
+  const positions = new Float32Array(compactVertexCount * 3);
+  const colors = new Float32Array(compactVertexCount * 4);
+  const uvs = new Float32Array(compactVertexCount * 2);
+  const textureIndices = new Float32Array(compactVertexCount);
   const view = new DataView(vertices.buffer, vertices.byteOffset, vertices.byteLength);
 
-  for (let index = 0; index < vertexCount; index += 1) {
-    const byteOffset = index * 12;
-    const v0 = view.getUint32(byteOffset, true);
-    const v1 = view.getUint32(byteOffset + 4, true);
-    const v2 = view.getUint32(byteOffset + 8, true);
-    const localX = ((v0 >>> 17) & 0x7fff) - 0x4000;
-    const localY = -((v1 & 0x7fff) - 0x4000);
-    const localZ = ((v2 >>> 17) & 0x7fff) - 0x4000;
-    const hsl = (v1 >>> 15) & 0xffff;
-    const isTextured = ((v1 >>> 31) & 0x1) === 1;
-    const alpha = ((v2 >>> 9) & 0xff) / 255;
+  for (const [sourceIndex, targetIndex] of remap.entries()) {
+    const { localX, localY, localZ, hsl, isTextured, alpha, u, v, textureIndex } = decodeVertex(view, sourceIndex);
     const [r, g, b] = hslToRgb(hsl, isTextured);
 
-    positions[index * 3] = mapX * Scene.MAP_SQUARE_SIZE + localX / 128;
-    positions[index * 3 + 1] = -localY / 128;
-    positions[index * 3 + 2] = mapY * Scene.MAP_SQUARE_SIZE + localZ / 128;
-    colors[index * 4] = r;
-    colors[index * 4 + 1] = g;
-    colors[index * 4 + 2] = b;
-    colors[index * 4 + 3] = alpha;
+    positions[targetIndex * 3] = mapX * Scene.MAP_SQUARE_SIZE + localX / 128;
+    positions[targetIndex * 3 + 1] = -localY / 128;
+    positions[targetIndex * 3 + 2] = mapY * Scene.MAP_SQUARE_SIZE + localZ / 128;
+    colors[targetIndex * 4] = r;
+    colors[targetIndex * 4 + 1] = g;
+    colors[targetIndex * 4 + 2] = b;
+    colors[targetIndex * 4 + 3] = alpha;
+    uvs[targetIndex * 2] = u;
+    uvs[targetIndex * 2 + 1] = v;
+    textureIndices[targetIndex] = textureIndex;
   }
+
+  writeBinary(positionsPath, positions);
+  writeBinary(colorsPath, colors);
+  writeBinary(uvsPath, uvs);
+  writeBinary(textureIndicesPath, textureIndices);
+  writeBinary(indicesPath, compactIndices);
 
   return {
     mapX,
     mapY,
-    vertexCount,
-    indexCount: indices.length,
-    positions: "chunks/" + mapX + "_" + mapY + ".positions.bin",
-    colors: "chunks/" + mapX + "_" + mapY + ".colors.bin",
-    indices: "chunks/" + mapX + "_" + mapY + ".indices.bin",
+    vertexCount: compactVertexCount,
+    indexCount: compactIndices.length,
+    positions: positionsPath,
+    colors: colorsPath,
+    uvs: uvsPath,
+    textureIndices: textureIndicesPath,
+    indices: indicesPath,
   };
 }
 
@@ -460,8 +596,8 @@ function renderMapSquareImage(state: WorkerState, mapX: number, mapY: number): P
 function discoverSurfaceMapSquares(state: WorkerState): MapSquareCoord[] {
   const coords: MapSquareCoord[] = [];
 
-  for (let mapX = 0; mapX < 100; mapX += 1) {
-    for (let mapY = 0; mapY <= SURFACE_MAP_Y_MAX; mapY += 1) {
+  for (let mapX = SURFACE_MAP_X_MIN; mapX <= SURFACE_MAP_X_MAX; mapX += 1) {
+    for (let mapY = SURFACE_MAP_Y_MIN; mapY <= Math.min(SURFACE_MAP_Y_MAX, SURFACE_MAP_Y_SURFACE_MAX); mapY += 1) {
       if (state.sceneBuilder.mapFileLoader.getTerrainData(mapX, mapY)) {
         coords.push({ mapX, mapY });
       }
@@ -560,6 +696,61 @@ function writeOverviewAssets(state: WorkerState, validMapSquares: MapSquareCoord
   return overviewTiles;
 }
 
+function writeTextureAtlas(state: WorkerState): TextureAtlas {
+  const textureIds = state.textureLoader.getTextureIds().filter((id: number) => state.textureLoader.isSd(id)).slice(0, 2047);
+  const tileSize = 128;
+  const count = textureIds.length + 1;
+  const columns = Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / columns);
+  const atlas: PngImage = {
+    width: columns * tileSize,
+    height: rows * tileSize,
+    data: new Uint8Array(columns * rows * tileSize * tileSize * 4),
+  };
+
+  for (let pixel = 0; pixel < tileSize * tileSize; pixel += 1) {
+    const target = pixel * 4;
+    atlas.data[target] = 255;
+    atlas.data[target + 1] = 255;
+    atlas.data[target + 2] = 255;
+    atlas.data[target + 3] = 255;
+  }
+
+  textureIds.forEach((textureId: number, textureIndex: number) => {
+    let pixels: Int32Array;
+    try {
+      pixels = state.textureLoader.getPixelsArgb(textureId, tileSize, true, 1.0);
+    } catch {
+      return;
+    }
+
+    const atlasIndex = textureIndex + 1;
+    const column = atlasIndex % columns;
+    const row = Math.floor(atlasIndex / columns);
+    for (let y = 0; y < tileSize; y += 1) {
+      for (let x = 0; x < tileSize; x += 1) {
+        const source = pixels[y * tileSize + x] || 0xffffffff;
+        const target = ((row * tileSize + y) * atlas.width + column * tileSize + x) * 4;
+        atlas.data[target] = (source >> 16) & 255;
+        atlas.data[target + 1] = (source >> 8) & 255;
+        atlas.data[target + 2] = source & 255;
+        atlas.data[target + 3] = (source >>> 24) & 255;
+      }
+    }
+  });
+
+  const texture = "textures/sd-atlas.png";
+  writePng(texture, atlas);
+
+  return {
+    texture,
+    tileSize,
+    columns,
+    rows,
+    count,
+  };
+}
+
 function downsampleTo(image: PngImage, width: number, height: number): PngImage {
   let current = image;
   while (current.width / 2 >= width && current.height / 2 >= height) {
@@ -592,17 +783,27 @@ async function exportScene() {
   const state = await createWorkerState(cache);
   const validMapSquares = discoverSurfaceMapSquares(state);
   const overviewTiles = writeOverviewAssets(state, validMapSquares);
+  const textureAtlas = writeTextureAtlas(state);
   const { mapXMin, mapXMax, mapYMin, mapYMax } = getBounds(validMapSquares);
   const loader = new SdMapDataLoader();
   loader.init();
   const chunks: ExportMesh[] = [];
+  const exportMapSquares = validMapSquares.filter(({ mapX, mapY }) => {
+    if (EXPORT_FROM_X !== undefined && (mapX < EXPORT_FROM_X || (mapX === EXPORT_FROM_X && EXPORT_FROM_Y !== undefined && mapY < EXPORT_FROM_Y))) {
+      return false;
+    }
+    if (EXPORT_TO_X !== undefined && (mapX > EXPORT_TO_X || (mapX === EXPORT_TO_X && EXPORT_TO_Y !== undefined && mapY > EXPORT_TO_Y))) {
+      return false;
+    }
+    return true;
+  });
 
-  for (const { mapX, mapY } of validMapSquares) {
+  for (const { mapX, mapY } of exportMapSquares) {
       const input: SdMapLoaderInput = {
         mapX,
         mapY,
         maxLevel: 0,
-        loadObjs: false,
+        loadObjs: true,
         loadNpcs: false,
         smoothTerrain: true,
         minimizeDrawCalls: true,
@@ -614,42 +815,20 @@ async function exportScene() {
         continue;
       }
 
-      const chunk = decodeMesh(mapX, mapY, result.data.vertices, result.data.indices);
+      const visualDrawRanges = [...result.data.drawRanges, ...result.data.drawRangesAlpha];
+      const chunk = decodeMesh(mapX, mapY, result.data.vertices, result.data.indices, visualDrawRanges);
       if (chunk.vertexCount === 0 || chunk.indexCount === 0) {
         console.warn("Skipping empty scene data", mapX, mapY);
         continue;
       }
 
-      const positions = new Float32Array(chunk.vertexCount * 3);
-      const colors = new Float32Array(chunk.vertexCount * 4);
-      const view = new DataView(result.data.vertices.buffer, result.data.vertices.byteOffset, result.data.vertices.byteLength);
-      for (let index = 0; index < chunk.vertexCount; index += 1) {
-        const byteOffset = index * 12;
-        const v0 = view.getUint32(byteOffset, true);
-        const v1 = view.getUint32(byteOffset + 4, true);
-        const v2 = view.getUint32(byteOffset + 8, true);
-        const localX = ((v0 >>> 17) & 0x7fff) - 0x4000;
-        const localY = -((v1 & 0x7fff) - 0x4000);
-        const localZ = ((v2 >>> 17) & 0x7fff) - 0x4000;
-        const hsl = (v1 >>> 15) & 0xffff;
-        const isTextured = ((v1 >>> 31) & 0x1) === 1;
-        const alpha = ((v2 >>> 9) & 0xff) / 255;
-        const [r, g, b] = hslToRgb(hsl, isTextured);
-
-        positions[index * 3] = mapX * Scene.MAP_SQUARE_SIZE + localX / 128;
-        positions[index * 3 + 1] = -localY / 128;
-        positions[index * 3 + 2] = mapY * Scene.MAP_SQUARE_SIZE + localZ / 128;
-        colors[index * 4] = r;
-        colors[index * 4 + 1] = g;
-        colors[index * 4 + 2] = b;
-        colors[index * 4 + 3] = alpha;
-      }
-
-      writeBinary(chunk.positions, positions);
-      writeBinary(chunk.colors, colors);
-      writeBinary(chunk.indices, result.data.indices);
       chunks.push(chunk);
       console.log("Exported", mapX, mapY, chunk.vertexCount, chunk.indexCount);
+  }
+
+  if (EXPORT_RANGE_ONLY) {
+    console.log("Range export complete", exportMapSquares.length, "map squares");
+    return;
   }
 
   const manifest = {
@@ -679,6 +858,7 @@ async function exportScene() {
         { id: "plane-0", kind: "plane", tiles: overviewTiles.map((tile) => tile.texture), overviewTiles },
       ],
     },
+    textureAtlas,
     projection: {
       type: "globe-to-plane",
       radius: Math.max((mapXMax - mapXMin + 1) * Scene.MAP_SQUARE_SIZE, (mapYMax - mapYMin + 1) * Scene.MAP_SQUARE_SIZE) * 0.48,
@@ -721,8 +901,22 @@ exportScene().catch((error) => {
 function main() {
   ensureRepo();
   writeExportScript();
-  rmSync(outputDir, { recursive: true, force: true });
+  let previousOutputDir: string | undefined;
+  if (existsSync(outputDir) && !rangeOnly) {
+    previousOutputDir = `${outputDir}.previous-${Date.now()}`;
+    renameSync(outputDir, previousOutputDir);
+  }
   run("npx", ["tsx", "scripts/cache/export-observatory-scene.ts"], rsRepo);
+  if (!existsSync(join(outputDir, "manifest.json"))) {
+    throw new Error(`Scene export did not write ${join(outputDir, "manifest.json")}`);
+  }
+  if (previousOutputDir) {
+    try {
+      rmSync(previousOutputDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 250 });
+    } catch (error) {
+      console.warn("Could not clean previous export directory:", previousOutputDir, error);
+    }
+  }
 }
 
 main();

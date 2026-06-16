@@ -171,7 +171,7 @@ export function getProjectionTransition(
   const { width, depth } = getBoundsMetrics(bounds);
   const planeDistance = lod?.planeDistance ?? Math.max(width, depth) * 1.35;
   const closeDistance = lod?.closeDistance ?? Math.max(width, depth) * 0.1;
-  return 1 - MathUtils.smoothstep(distance, closeDistance * 1.8, planeDistance * 0.72);
+  return 1 - MathUtils.smoothstep(distance, closeDistance * 1.45, planeDistance * 0.98);
 }
 
 export function getProjectionMorph(
@@ -180,5 +180,5 @@ export function getProjectionMorph(
   lod: OsrsSceneLodThresholds | undefined
 ) {
   const transition = getProjectionTransition(distance, bounds, lod);
-  return MathUtils.smoothstep(transition, 0.08, 0.78);
+  return MathUtils.smoothstep(transition, 0.02, 0.95);
 }

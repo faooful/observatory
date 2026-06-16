@@ -1,0 +1,785 @@
+{
+  "source": "https://oldschool.runescape.wiki/w/Category:Bosses",
+  "generatedAt": "2026-06-16T00:46:44.236Z",
+  "bosses": [
+    {
+      "id": "wiki-boss-sol-heredit",
+      "title": "Sol Heredit",
+      "wiki": "https://oldschool.runescape.wiki/w/Sol_Heredit",
+      "summary": "Boss encounter with combat level 1563.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 1563,
+      "locationName": "Fortis Colosseum"
+    },
+    {
+      "id": "wiki-boss-phosani-s-nightmare",
+      "title": "Phosani's Nightmare",
+      "wiki": "https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare",
+      "summary": "Phosani's Nightmare is a more difficult version of The Nightmare, encountered by selecting Drink-from on the Pool of Nightmares in the Sisterhood Sanctuary.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 1024,
+      "locationName": "Sisterhood Sanctuary"
+    },
+    {
+      "id": "wiki-boss-nex",
+      "title": "Nex",
+      "wiki": "https://oldschool.runescape.wiki/w/Nex",
+      "summary": "Nex is one of Zaros' most powerful followers.",
+      "category": "God Wars",
+      "difficulty": "Very high",
+      "combatLevel": 1001,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-corrupted-hunllef",
+      "title": "Corrupted Hunllef",
+      "wiki": "https://oldschool.runescape.wiki/w/Corrupted_Hunllef",
+      "summary": "Boss encounter with combat level 894.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 894,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-araxxor",
+      "title": "Araxxor",
+      "wiki": "https://oldschool.runescape.wiki/w/Araxxor",
+      "summary": "Araxxor is the boss version of araxytes found within the Morytania Spider Cave, requiring level 92 Slayer and access to Morytania to kill.",
+      "category": "Slayer",
+      "difficulty": "Very high",
+      "combatLevel": 890,
+      "locationName": "Morytania Spider Cave",
+      "coordinates": {
+        "x": 3630,
+        "y": 9813
+      }
+    },
+    {
+      "id": "wiki-boss-the-nightmare",
+      "title": "The Nightmare",
+      "wiki": "https://oldschool.runescape.wiki/w/The_Nightmare",
+      "summary": "Boss encounter with combat level 814.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 814,
+      "locationName": "Sisterhood Sanctuary"
+    },
+    {
+      "id": "wiki-boss-corporeal-beast",
+      "title": "Corporeal Beast",
+      "wiki": "https://oldschool.runescape.wiki/w/Corporeal_Beast",
+      "summary": "Wilderness encounter with combat level 785.",
+      "category": "Wilderness",
+      "difficulty": "Very high",
+      "combatLevel": 785,
+      "locationName": "Corporeal Beast's Lair (east of the Graveyard of Shadows or games necklace teleport)",
+      "coordinates": {
+        "x": 3203,
+        "y": 3681
+      }
+    },
+    {
+      "id": "wiki-boss-zulrah",
+      "title": "Zulrah",
+      "wiki": "https://oldschool.runescape.wiki/w/Zulrah",
+      "summary": "Zulrah is a level 725 solo-only snake boss.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 725,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-crystalline-hunllef",
+      "title": "Crystalline Hunllef",
+      "wiki": "https://oldschool.runescape.wiki/w/Crystalline_Hunllef",
+      "summary": "Boss encounter with combat level 674.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 674,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-k-ril-tsutsaroth",
+      "title": "K'ril Tsutsaroth",
+      "wiki": "https://oldschool.runescape.wiki/w/K%27ril_Tsutsaroth",
+      "summary": "God Wars encounter with combat level 650.",
+      "category": "God Wars",
+      "difficulty": "Very high",
+      "combatLevel": 650,
+      "locationName": "God Wars Dungeon (Zamorak boss room)",
+      "coordinates": {
+        "x": 2925,
+        "y": 5322
+      }
+    },
+    {
+      "id": "wiki-boss-the-hueycoatl",
+      "title": "The Hueycoatl",
+      "wiki": "https://oldschool.runescape.wiki/w/The_Hueycoatl",
+      "summary": "Boss encounter with combat level 642.",
+      "category": "Boss",
+      "difficulty": "Very high",
+      "combatLevel": 642,
+      "locationName": "The Darkfrost",
+      "coordinates": {
+        "x": 1509,
+        "y": 3290
+      }
+    },
+    {
+      "id": "wiki-boss-general-graardor",
+      "title": "General Graardor",
+      "wiki": "https://oldschool.runescape.wiki/w/General_Graardor",
+      "summary": "General Graardor is the leader of Bandos' forces within the God Wars Dungeon.",
+      "category": "God Wars",
+      "difficulty": "Very high",
+      "combatLevel": 624,
+      "locationName": "God Wars Dungeon (Bandos boss room)",
+      "coordinates": {
+        "x": 2872,
+        "y": 5358
+      }
+    },
+    {
+      "id": "wiki-boss-commander-zilyana",
+      "title": "Commander Zilyana",
+      "wiki": "https://oldschool.runescape.wiki/w/Commander_Zilyana",
+      "summary": "God Wars encounter with combat level 596.",
+      "category": "God Wars",
+      "difficulty": "High",
+      "combatLevel": 596,
+      "locationName": "God Wars Dungeon (Saradomin boss room)"
+    },
+    {
+      "id": "wiki-boss-kree-arra",
+      "title": "Kree'arra",
+      "wiki": "https://oldschool.runescape.wiki/w/Kree%27arra",
+      "summary": "God Wars encounter with combat level 580.",
+      "category": "God Wars",
+      "difficulty": "High",
+      "combatLevel": 580,
+      "locationName": "God Wars Dungeon (Armadyl boss room)",
+      "coordinates": {
+        "x": 2832,
+        "y": 5302
+      }
+    },
+    {
+      "id": "wiki-boss-callisto",
+      "title": "Callisto",
+      "wiki": "https://oldschool.runescape.wiki/w/Callisto",
+      "summary": "Wilderness encounter with combat level 470.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 470,
+      "locationName": "Callisto's Den",
+      "coordinates": {
+        "x": 3291,
+        "y": 3849
+      }
+    },
+    {
+      "id": "wiki-boss-venenatis",
+      "title": "Venenatis",
+      "wiki": "https://oldschool.runescape.wiki/w/Venenatis",
+      "summary": "Venenatis is a large spider that resides in the Silk Chasm, at level 35 Wilderness.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 464,
+      "locationName": "Silk Chasm",
+      "coordinates": {
+        "x": 3319,
+        "y": 3798
+      }
+    },
+    {
+      "id": "wiki-boss-vet-ion",
+      "title": "Vet'ion",
+      "wiki": "https://oldschool.runescape.wiki/w/Vet%27ion",
+      "summary": "Vet'ion (pronounced  VET-ee-ən) is a Zamorakian skeletal champion that resides in Vet'ion's Rest, at level 35 Wilderness.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 454,
+      "locationName": "Vet'ion's Rest",
+      "coordinates": {
+        "x": 3219,
+        "y": 3788
+      }
+    },
+    {
+      "id": "wiki-boss-alchemical-hydra",
+      "title": "Alchemical Hydra",
+      "wiki": "https://oldschool.runescape.wiki/w/Alchemical_Hydra",
+      "summary": "The Alchemical Hydra is a boss version of hydra, found in the lower level of the Karuulm Slayer Dungeon in Mount Karuulm, requiring level 95 Slayer to kill.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 426,
+      "locationName": "Karuulm Slayer Dungeon (lower level)",
+      "coordinates": {
+        "x": 1364,
+        "y": 10265
+      }
+    },
+    {
+      "id": "wiki-boss-revenant-maledictus",
+      "title": "Revenant maledictus",
+      "wiki": "https://oldschool.runescape.wiki/w/Revenant_maledictus",
+      "summary": "The Revenant maledictus is the demi-boss variant of the ethereal revenants, an undead spectral being shrouded in Zarosian power.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 397,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-abyssal-sire",
+      "title": "Abyssal Sire",
+      "wiki": "https://oldschool.runescape.wiki/w/Abyssal_Sire",
+      "summary": "The Abyssal Sire is an abyssal demon Slayer boss that requires level 85 Slayer to kill.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 350,
+      "locationName": "Abyssal Nexus",
+      "coordinates": {
+        "x": 3107,
+        "y": 4791
+      }
+    },
+    {
+      "id": "wiki-boss-branda-the-fire-queen",
+      "title": "Branda the Fire Queen",
+      "wiki": "https://oldschool.runescape.wiki/w/Branda_the_Fire_Queen",
+      "summary": "Boss encounter with combat level 350.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 350,
+      "locationName": "Asgarnian Ice Dungeon"
+    },
+    {
+      "id": "wiki-boss-eldric-the-ice-king",
+      "title": "Eldric the Ice King",
+      "wiki": "https://oldschool.runescape.wiki/w/Eldric_the_Ice_King",
+      "summary": "Eldric the Ice King is a giant boss, being one of the Royal Titans, along with Branda the Fire Queen.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 350,
+      "locationName": "Asgarnian Ice Dungeon"
+    },
+    {
+      "id": "wiki-boss-zalcano",
+      "title": "Zalcano",
+      "wiki": "https://oldschool.runescape.wiki/w/Zalcano",
+      "summary": "Zalcano is a demon imprisoned beneath Prifddinas that is fought using skilling rather than conventional combat.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 336,
+      "locationName": "Volcanic caverns beneath Prifddinas"
+    },
+    {
+      "id": "wiki-boss-kalphite-queen",
+      "title": "Kalphite Queen",
+      "wiki": "https://oldschool.runescape.wiki/w/Kalphite_Queen",
+      "summary": "Boss encounter with combat level 333.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 333,
+      "locationName": "Kalphite Lair",
+      "coordinates": {
+        "x": 3186,
+        "y": 9424
+      }
+    },
+    {
+      "id": "wiki-boss-blood-moon",
+      "title": "Blood Moon",
+      "wiki": "https://oldschool.runescape.wiki/w/Blood_Moon",
+      "summary": "Boss encounter with combat level 329.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 329,
+      "locationName": "Neypotzli - Blood Moon chamber",
+      "coordinates": {
+        "x": 1392,
+        "y": 9632
+      }
+    },
+    {
+      "id": "wiki-boss-blue-moon",
+      "title": "Blue Moon",
+      "wiki": "https://oldschool.runescape.wiki/w/Blue_Moon",
+      "summary": "Boss encounter with combat level 329.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 329,
+      "locationName": "Neypotzli - Blue Moon chamber",
+      "coordinates": {
+        "x": 1440,
+        "y": 9680
+      }
+    },
+    {
+      "id": "wiki-boss-eclipse-moon",
+      "title": "Eclipse Moon",
+      "wiki": "https://oldschool.runescape.wiki/w/Eclipse_Moon",
+      "summary": "The Eclipse Moon is one of the three Moons of Peril imprisoned in Neypotzli.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 329,
+      "locationName": "Neypotzli - Eclipse Moon chamber",
+      "coordinates": {
+        "x": 1488,
+        "y": 9632
+      }
+    },
+    {
+      "id": "wiki-boss-dusk",
+      "title": "Dusk",
+      "wiki": "https://oldschool.runescape.wiki/w/Dusk",
+      "summary": "Dusk, along with Dawn, are the Grotesque Guardians that require level 75 Slayer to kill.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 328,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-skotizo",
+      "title": "Skotizo",
+      "wiki": "https://oldschool.runescape.wiki/w/Skotizo",
+      "summary": "Slayer encounter with combat level 321.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 321,
+      "locationName": "Catacombs of Kourend",
+      "coordinates": {
+        "x": 2271,
+        "y": 5661
+      }
+    },
+    {
+      "id": "wiki-boss-artio",
+      "title": "Artio",
+      "wiki": "https://oldschool.runescape.wiki/w/Artio",
+      "summary": "Artio is a weaker variant of Callisto who is fought in the Hunter's End, a singles-plus combat area in level 21 Wilderness.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 320,
+      "locationName": "Hunter's End",
+      "coordinates": {
+        "x": 3116,
+        "y": 3677
+      }
+    },
+    {
+      "id": "wiki-boss-cerberus",
+      "title": "Cerberus",
+      "wiki": "https://oldschool.runescape.wiki/w/Cerberus",
+      "summary": "Slayer encounter with combat level 318.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 318,
+      "locationName": "Cerberus' Lair",
+      "coordinates": {
+        "x": 1238,
+        "y": 1250
+      }
+    },
+    {
+      "id": "wiki-boss-sarachnis",
+      "title": "Sarachnis",
+      "wiki": "https://oldschool.runescape.wiki/w/Sarachnis",
+      "summary": "Sarachnis, the mother of the temple spiders, is a mid-level boss found in the Forthos Dungeon, in a former burial tomb south of the Spider Den.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 318,
+      "locationName": "Forthos Dungeon — Burial tomb",
+      "coordinates": {
+        "x": 1840,
+        "y": 9900
+      }
+    },
+    {
+      "id": "wiki-boss-chaos-elemental",
+      "title": "Chaos Elemental",
+      "wiki": "https://oldschool.runescape.wiki/w/Chaos_Elemental",
+      "summary": "Wilderness encounter with combat level 305.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 305,
+      "locationName": "West of the Rogues' Castle",
+      "coordinates": {
+        "x": 3261,
+        "y": 3927
+      }
+    },
+    {
+      "id": "wiki-boss-dagannoth-prime",
+      "title": "Dagannoth Prime",
+      "wiki": "https://oldschool.runescape.wiki/w/Dagannoth_Prime",
+      "summary": "Boss encounter with combat level 303.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 303,
+      "locationName": "Waterbirth Island Dungeon",
+      "coordinates": {
+        "x": 2631,
+        "y": 9667
+      }
+    },
+    {
+      "id": "wiki-boss-dagannoth-rex",
+      "title": "Dagannoth Rex",
+      "wiki": "https://oldschool.runescape.wiki/w/Dagannoth_Rex",
+      "summary": "Slayer encounter with combat level 303.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 303,
+      "locationName": "Waterbirth Island Dungeon",
+      "coordinates": {
+        "x": 2633,
+        "y": 9661
+      }
+    },
+    {
+      "id": "wiki-boss-dagannoth-supreme",
+      "title": "Dagannoth Supreme",
+      "wiki": "https://oldschool.runescape.wiki/w/Dagannoth_Supreme",
+      "summary": "Boss encounter with combat level 303.",
+      "category": "Boss",
+      "difficulty": "High",
+      "combatLevel": 303,
+      "locationName": "Waterbirth Island Dungeon",
+      "coordinates": {
+        "x": 2626,
+        "y": 9664
+      }
+    },
+    {
+      "id": "wiki-boss-spindel",
+      "title": "Spindel",
+      "wiki": "https://oldschool.runescape.wiki/w/Spindel",
+      "summary": "Wilderness encounter with combat level 302.",
+      "category": "Wilderness",
+      "difficulty": "High",
+      "combatLevel": 302,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-thermonuclear-smoke-devil",
+      "title": "Thermonuclear smoke devil",
+      "wiki": "https://oldschool.runescape.wiki/w/Thermonuclear_smoke_devil",
+      "summary": "Slayer encounter with combat level 301.",
+      "category": "Slayer",
+      "difficulty": "High",
+      "combatLevel": 301,
+      "locationName": "Smoke Devil Dungeon",
+      "coordinates": {
+        "x": 2360,
+        "y": 9452
+      }
+    },
+    {
+      "id": "wiki-boss-kraken",
+      "title": "Kraken",
+      "wiki": "https://oldschool.runescape.wiki/w/Kraken",
+      "summary": "Slayer encounter with combat level 291.",
+      "category": "Slayer",
+      "difficulty": "Mid",
+      "combatLevel": 291,
+      "locationName": "Kraken Cove",
+      "coordinates": {
+        "x": 2278,
+        "y": 10034
+      }
+    },
+    {
+      "id": "wiki-boss-hespori",
+      "title": "Hespori",
+      "wiki": "https://oldschool.runescape.wiki/w/Hespori",
+      "summary": "Boss encounter with combat level 284.",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 284,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-deranged-archaeologist",
+      "title": "Deranged archaeologist",
+      "wiki": "https://oldschool.runescape.wiki/w/Deranged_archaeologist",
+      "summary": "The Deranged archaeologist is a relatively simple boss similar to the Crazy archaeologist and the Chaos Fanatic; although his special attack has the potential to cause...",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 276,
+      "locationName": "Fossil Island &ndash; South end of the Tar Swamp",
+      "coordinates": {
+        "x": 3683,
+        "y": 3706
+      }
+    },
+    {
+      "id": "wiki-boss-king-black-dragon",
+      "title": "King Black Dragon",
+      "wiki": "https://oldschool.runescape.wiki/w/King_Black_Dragon",
+      "summary": "Wilderness encounter with combat level 276.",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 276,
+      "locationName": "King Black Dragon Lair (Wilderness)",
+      "coordinates": {
+        "x": 3109,
+        "y": 10265
+      }
+    },
+    {
+      "id": "wiki-boss-calvar-ion",
+      "title": "Calvar'ion",
+      "wiki": "https://oldschool.runescape.wiki/w/Calvar%27ion",
+      "summary": "Wilderness encounter with combat level 264.",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 264,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-giant-mole",
+      "title": "Giant Mole",
+      "wiki": "https://oldschool.runescape.wiki/w/Giant_Mole",
+      "summary": "Boss encounter with combat level 230.",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 230,
+      "locationName": "Mole Hole (Under Falador Park)",
+      "coordinates": {
+        "x": 1759,
+        "y": 5189
+      }
+    },
+    {
+      "id": "wiki-boss-dawn",
+      "title": "Dawn",
+      "wiki": "https://oldschool.runescape.wiki/w/Dawn",
+      "summary": "Slayer encounter with combat level 228.",
+      "category": "Slayer",
+      "difficulty": "Mid",
+      "combatLevel": 228,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-scorpia",
+      "title": "Scorpia",
+      "wiki": "https://oldschool.runescape.wiki/w/Scorpia",
+      "summary": "Scorpia is a large female scorpion that resides in a cave beneath the Scorpion Pit located in Wilderness level 53-55.",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 225,
+      "locationName": "Cave in the Scorpion Pit (north-east Wilderness)",
+      "coordinates": {
+        "x": 3233,
+        "y": 10341
+      }
+    },
+    {
+      "id": "wiki-boss-penance-queen",
+      "title": "Penance Queen",
+      "wiki": "https://oldschool.runescape.wiki/w/Penance_Queen",
+      "summary": "The Penance Queen is a type of Penance creature, and the boss monster of the Barbarian Assault minigame.",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 209,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-crazy-archaeologist",
+      "title": "Crazy archaeologist",
+      "wiki": "https://oldschool.runescape.wiki/w/Crazy_archaeologist",
+      "summary": "Wilderness encounter with combat level 204.",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 204,
+      "locationName": "Ruins (west)",
+      "coordinates": {
+        "x": 2977,
+        "y": 3702
+      }
+    },
+    {
+      "id": "wiki-boss-chaos-fanatic",
+      "title": "Chaos Fanatic",
+      "wiki": "https://oldschool.runescape.wiki/w/Chaos_Fanatic",
+      "summary": "Wilderness encounter with combat level 202.",
+      "category": "Wilderness",
+      "difficulty": "Mid",
+      "combatLevel": 202,
+      "locationName": "West of the Lava Maze",
+      "coordinates": {
+        "x": 2979,
+        "y": 3846
+      }
+    },
+    {
+      "id": "wiki-boss-the-mimic",
+      "title": "The Mimic",
+      "wiki": "https://oldschool.runescape.wiki/w/The_Mimic",
+      "summary": "Boss encounter with combat level 186.",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 186,
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-bryophyta",
+      "title": "Bryophyta",
+      "wiki": "https://oldschool.runescape.wiki/w/Bryophyta",
+      "summary": "Boss encounter with combat level 128.",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 128,
+      "locationName": "Bryophyta's Lair (Varrock Sewers)",
+      "coordinates": {
+        "x": 3220,
+        "y": 9933
+      }
+    },
+    {
+      "id": "wiki-boss-dharok-the-wretched",
+      "title": "Dharok the Wretched",
+      "wiki": "https://oldschool.runescape.wiki/w/Dharok_the_Wretched",
+      "summary": "Dharok the Wretched is the second oldest of the six Barrows brothers.",
+      "category": "Barrows",
+      "difficulty": "Mid",
+      "combatLevel": 115,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-guthan-the-infested",
+      "title": "Guthan the Infested",
+      "wiki": "https://oldschool.runescape.wiki/w/Guthan_the_Infested",
+      "summary": "Barrows encounter with combat level 115.",
+      "category": "Barrows",
+      "difficulty": "Mid",
+      "combatLevel": 115,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-torag-the-corrupted",
+      "title": "Torag the Corrupted",
+      "wiki": "https://oldschool.runescape.wiki/w/Torag_the_Corrupted",
+      "summary": "Barrows encounter with combat level 115.",
+      "category": "Barrows",
+      "difficulty": "Mid",
+      "combatLevel": 115,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-verac-the-defiled",
+      "title": "Verac the Defiled",
+      "wiki": "https://oldschool.runescape.wiki/w/Verac_the_Defiled",
+      "summary": "Verac the Defiled is the youngest of the six Barrows brothers.",
+      "category": "Barrows",
+      "difficulty": "Mid",
+      "combatLevel": 115,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-obor",
+      "title": "Obor",
+      "wiki": "https://oldschool.runescape.wiki/w/Obor",
+      "summary": "Obor, the Hill Titan, is the hill giant boss residing in his lair, located behind the locked gates found at the western wall of the hill giant area in the Edgeville Du...",
+      "category": "Boss",
+      "difficulty": "Mid",
+      "combatLevel": 106,
+      "locationName": "Obor's Lair (Edgeville Dungeon)",
+      "coordinates": {
+        "x": 3091,
+        "y": 9799
+      }
+    },
+    {
+      "id": "wiki-boss-ahrim-the-blighted",
+      "title": "Ahrim the Blighted",
+      "wiki": "https://oldschool.runescape.wiki/w/Ahrim_the_Blighted",
+      "summary": "Ahrim the Blighted is the eldest of the six Barrows brothers and uses the Magic corner of the combat triangle.",
+      "category": "Barrows",
+      "difficulty": "Low",
+      "combatLevel": 98,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-karil-the-tainted",
+      "title": "Karil the Tainted",
+      "wiki": "https://oldschool.runescape.wiki/w/Karil_the_Tainted",
+      "summary": "Barrows encounter with combat level 98.",
+      "category": "Barrows",
+      "difficulty": "Low",
+      "combatLevel": 98,
+      "locationName": "Ancient Vault"
+    },
+    {
+      "id": "wiki-boss-salarin-the-twisted",
+      "title": "Salarin the twisted",
+      "wiki": "https://oldschool.runescape.wiki/w/Salarin_the_twisted",
+      "summary": "Salarin the twisted is a chaos druid found at the end of the Yanille Agility Dungeon.",
+      "category": "Wilderness",
+      "difficulty": "Low",
+      "combatLevel": 70,
+      "locationName": "Yanille Agility Dungeon",
+      "coordinates": {
+        "x": 2613,
+        "y": 9523
+      }
+    },
+    {
+      "id": "wiki-boss-barrows",
+      "title": "Barrows",
+      "wiki": "https://oldschool.runescape.wiki/w/Barrows",
+      "summary": "The Barrows is a series of six burial mounds east of Mort'ton in which the Barrows brothers were entombed after their deaths during the Third Age.",
+      "category": "Barrows",
+      "difficulty": "Unknown",
+      "locationName": "East of Mort'ton",
+      "coordinates": {
+        "x": 3567,
+        "y": 3291
+      }
+    },
+    {
+      "id": "wiki-boss-barrows-brothers",
+      "title": "Barrows brothers",
+      "wiki": "https://oldschool.runescape.wiki/w/Barrows_brothers",
+      "summary": "The Barrows brothers were a band of six legendary Saradominist warriors who ventured into Morytania during the God Wars, leading the Morytania Campaign.",
+      "category": "Barrows",
+      "difficulty": "Unknown",
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-grotesque-guardians",
+      "title": "Grotesque Guardians",
+      "wiki": "https://oldschool.runescape.wiki/w/Grotesque_Guardians",
+      "summary": "Slayer encounter from the OSRS Wiki boss category.",
+      "category": "Slayer",
+      "difficulty": "Unknown",
+      "locationName": "Slayer Tower"
+    },
+    {
+      "id": "wiki-boss-royal-titans",
+      "title": "Royal Titans",
+      "wiki": "https://oldschool.runescape.wiki/w/Royal_Titans",
+      "summary": "The Royal Titans are a boss encounter consisting of the two giants Eldric the Ice King and Branda the Fire Queen.",
+      "category": "Boss",
+      "difficulty": "Unknown",
+      "locationName": "Boss entrance"
+    },
+    {
+      "id": "wiki-boss-tempoross",
+      "title": "Tempoross",
+      "wiki": "https://oldschool.runescape.wiki/w/Tempoross",
+      "summary": "Boss encounter from the OSRS Wiki boss category.",
+      "category": "Boss",
+      "difficulty": "Unknown",
+      "locationName": "Tempoross Cove",
+      "coordinates": {
+        "x": 3035,
+        "y": 2850
+      }
+    }
+  ]
+}

@@ -133,14 +133,28 @@ async function main() {
     bounds: surfaceBounds,
     overview: {
       ...manifest.overview,
-      globeTexture: manifest.overview?.globeTexture ?? "overview/globe/0/0_0.png",
+      globeTexture: outputTexture,
       planeTexture: outputTexture,
       fullTexture: outputTexture
     },
     texturePyramid: manifest.texturePyramid
       ? {
           ...manifest.texturePyramid,
-          atlas: outputTexture
+          atlas: outputTexture,
+          levels: manifest.texturePyramid.levels.map((level) =>
+            level.kind === "globe"
+              ? {
+                  ...level,
+                  tiles: [outputTexture]
+                }
+              : level.kind === "plane"
+                ? {
+                    ...level,
+                    tiles: surfaceTiles.map((tile) => tile.texture),
+                    overviewTiles: surfaceTiles
+                  }
+                : level
+          )
         }
       : manifest.texturePyramid,
     projection: manifest.projection
