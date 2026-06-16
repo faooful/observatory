@@ -21,6 +21,7 @@ import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Texture } from "thr
 import type { CameraControlsImpl } from "@react-three/drei";
 import { getTabActivities } from "@/lib/activities/activityModel";
 import type { Activity } from "@/lib/activities/types";
+import { publicPath } from "@/lib/publicPath";
 import { useMapStore } from "@/lib/store/useMapStore";
 import type { OsrsMapSquareAsset, OsrsSceneManifest } from "@/lib/osrs-scene/types";
 import {
@@ -32,7 +33,7 @@ import {
   surfaceToMapWorld
 } from "@/lib/osrs-scene/projection";
 
-const SCENE_ROOT = "/osrs-scene/osrs-238_2026-06-03";
+const SCENE_ROOT = publicPath("/osrs-scene/osrs-238_2026-06-03");
 const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
 const MAX_CONCURRENT_CHUNK_LOADS = 18;

@@ -1,8 +1,9 @@
 import type { Requirement } from "@/lib/activities/types";
+import { publicPath } from "@/lib/publicPath";
 
 function getRequirementIcon(requirement: Requirement) {
   if (requirement.skill === "Combat") {
-    return "/osrs-icons/combat.png";
+    return publicPath("/osrs-icons/combat.png");
   }
 
   if (requirement.skill) {
@@ -10,7 +11,7 @@ function getRequirementIcon(requirement: Requirement) {
   }
 
   if (requirement.quest) {
-    return "/osrs-icons/quest-start.png";
+    return publicPath("/osrs-icons/quest-start.png");
   }
 
   return null;

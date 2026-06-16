@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from "react";
 import type { Activity } from "@/lib/activities/types";
+import { publicPath } from "@/lib/publicPath";
 import { RequirementList } from "./RequirementList";
 import { RewardList } from "./RewardList";
 import { RouteSteps } from "./RouteSteps";
 
 const FALLBACK_ICONS: Record<string, string> = {
-  quest: "/osrs-icons/quest-start.png",
-  money: "/osrs-icons/coins-10000.png",
-  boss: "/osrs-icons/combat.png",
-  clue: "/osrs-icons/collection-log.png"
+  quest: publicPath("/osrs-icons/quest-start.png"),
+  money: publicPath("/osrs-icons/coins-10000.png"),
+  boss: publicPath("/osrs-icons/combat.png"),
+  clue: publicPath("/osrs-icons/collection-log.png")
 };
 
 type GearSlot = {

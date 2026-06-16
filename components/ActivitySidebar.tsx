@@ -5,6 +5,7 @@ import { ActivityDetailCard } from "@/components/ActivityDetailCard";
 import { getActivities, getTabActivities } from "@/lib/activities/activityModel";
 import type { Activity, ActivityType } from "@/lib/activities/types";
 import { SKILL_ORDER, type PlayerLookup } from "@/lib/osrs/player";
+import { publicPath } from "@/lib/publicPath";
 import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
@@ -20,10 +21,10 @@ const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
 };
 
 const ACTIVITY_PANEL_ICONS: Partial<Record<ActivityType, string>> = {
-  quest: "/osrs-icons/quest-start.png",
-  money: "/osrs-icons/coins-10000.png",
-  boss: "/osrs-icons/combat.png",
-  clue: "/osrs-icons/collection-log.png"
+  quest: publicPath("/osrs-icons/quest-start.png"),
+  money: publicPath("/osrs-icons/coins-10000.png"),
+  boss: publicPath("/osrs-icons/combat.png"),
+  clue: publicPath("/osrs-icons/collection-log.png")
 };
 const WORLD_MAP_ICON_URL = "https://oldschool.runescape.wiki/images/World_map_icon.png?6dae2";
 const STATS_ICON_URL = "https://oldschool.runescape.wiki/images/Stats_icon.png";
@@ -83,7 +84,7 @@ function writeHistory(username: string) {
 function ActivityTabList({ activities }: { activities: Activity[] }) {
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const focusActivity = useMapStore((state) => state.focusActivity);
-  const getFallbackIcon = (activity: Activity) => ACTIVITY_PANEL_ICONS[activity.type] ?? "/osrs-icons/compass.png";
+  const getFallbackIcon = (activity: Activity) => ACTIVITY_PANEL_ICONS[activity.type] ?? publicPath("/osrs-icons/compass.png");
 
   if (activities.length === 0) {
     return null;
@@ -252,7 +253,7 @@ export function ActivitySidebar() {
     setPlayer(null);
 
     try {
-      const response = await fetch(`/api/player?username=${encodeURIComponent(normalized)}`);
+      const response = await fetch(publicPath(`/api/player?username=${encodeURIComponent(normalized)}`));
       const payload = (await response.json()) as PlayerLookup | { error?: string };
       if (!response.ok) {
         throw new Error("error" in payload && payload.error ? payload.error : "Could not load player.");

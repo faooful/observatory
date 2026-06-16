@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import type { PointerEvent } from "react";
+import { publicPath } from "@/lib/publicPath";
 import { useMapStore } from "@/lib/store/useMapStore";
 
 const DRAG_ROTATION_SENSITIVITY = 0.012;
@@ -78,7 +79,7 @@ export function MapCompassControl() {
           alt=""
           aria-hidden="true"
           draggable={false}
-          src="/osrs-icons/compass.png"
+          src={publicPath("/osrs-icons/compass.png")}
           style={{ transform: `rotate(${compassAngle}rad)` }}
         />
       </button>

@@ -3,6 +3,7 @@ import bossStrategyGearData from "@/data/activities/osrs-boss-strategy-gear.json
 import wikiBossData from "@/data/activities/osrs-bosses.json";
 import wikiMoneyMakerData from "@/data/activities/osrs-money-makers.json";
 import { getSkillLevel, isQuestComplete, SKILL_ORDER, type PlayerLookup, type QuestMarker } from "@/lib/osrs/player";
+import { publicPath } from "@/lib/publicPath";
 import type {
   AccountUnderstanding,
   Activity,
@@ -320,7 +321,7 @@ function getMoneyMakerIconSubject(title: string, category: string) {
 
 function getMoneyMakerIcon(title: string, category: string) {
   const subject = getMoneyMakerIconSubject(title, category);
-  return subject ? getWikiFileIcon(`${subject}.png`) : "/osrs-icons/coins-10000.png";
+  return subject ? getWikiFileIcon(`${subject}.png`) : publicPath("/osrs-icons/coins-10000.png");
 }
 
 function getBossIcon(title: string) {

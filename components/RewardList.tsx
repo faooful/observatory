@@ -1,8 +1,10 @@
+import { publicPath } from "@/lib/publicPath";
+
 const REWARD_ICON_RULES: Array<[RegExp, string]> = [
   [/\bbook of the dead\b/i, "Book of the dead"],
   [/\bantique lamps?\b/i, "Antique lamp"],
   [/\bquest points?\b/i, "Quest point icon"],
-  [/\brespawn point\b|\brespawn\b/i, "/osrs-icons/quest-start.png"],
+  [/\brespawn point\b|\brespawn\b/i, publicPath("/osrs-icons/quest-start.png")],
   [/\bArceuus spellbook\b|\bnew spells\b|\bspellbook\b/i, "Arceuus spellbook"],
   [/\bfight Yama\b|\bYama\b/i, "Yama"],
   [/\bcollection log\b|\blog slots?\b|\bgreen log\b/i, "Collection log"],
@@ -56,7 +58,7 @@ export function RewardList({ rewards = [], title = "Rewards" }: { rewards?: stri
                     if (event.currentTarget.src.endsWith("/osrs-icons/quest-start.png")) {
                       return;
                     }
-                    event.currentTarget.src = "/osrs-icons/quest-start.png";
+                    event.currentTarget.src = publicPath("/osrs-icons/quest-start.png");
                   }}
                   src={icon}
                 />
