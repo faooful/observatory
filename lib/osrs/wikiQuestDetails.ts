@@ -1,3 +1,5 @@
+import { cleanWikiText, extractTemplate, parseTemplateFields, uniqueCaseInsensitive } from "./wikiParsing";
+
 export type WikiQuestDetails = {
   start?: string;
   startMap?: {
@@ -10,119 +12,87 @@ export type WikiQuestDetails = {
   requirements: string[];
   items: string[];
   recommended: string[];
+  rewards: string[];
   detailSource: "osrs-wiki-quest-details";
 };
-
-function extractTemplate(wikitext: string, templateName: string) {
-  const startToken = `{{${templateName}`;
-  const start = wikitext.toLowerCase().indexOf(startToken.toLowerCase());
-  if (start === -1) {
-    return null;
-  }
-
-  let depth = 0;
-  for (let index = start; index < wikitext.length - 1; index += 1) {
-    const pair = wikitext.slice(index, index + 2);
-    if (pair === "{{") {
-      depth += 1;
-      index += 1;
-      continue;
-    }
-
-    if (pair === "}}") {
-      depth -= 1;
-      index += 1;
-      if (depth === 0) {
-        return wikitext.slice(start + startToken.length, index - 1);
-      }
-    }
-  }
-
-  return null;
-}
-
-function splitTopLevel(value: string, separator: string) {
-  const parts: string[] = [];
-  let depth = 0;
-  let current = "";
-
-  for (let index = 0; index < value.length; index += 1) {
-    const pair = value.slice(index, index + 2);
-    if (pair === "{{" || pair === "[[") {
-      depth += 1;
-      current += pair;
-      index += 1;
-      continue;
-    }
-
-    if (pair === "}}" || pair === "]]") {
-      depth = Math.max(0, depth - 1);
-      current += pair;
-      index += 1;
-      continue;
-    }
-
-    if (value[index] === separator && depth === 0) {
-      parts.push(current);
-      current = "";
-      continue;
-    }
-
-    current += value[index];
-  }
-
-  parts.push(current);
-  return parts;
-}
-
-function parseTemplateFields(template: string) {
-  const fields = new Map<string, string>();
-
-  splitTopLevel(template, "|").forEach((part) => {
-    const equalsIndex = part.indexOf("=");
-    if (equalsIndex === -1) {
-      return;
-    }
-
-    const key = part.slice(0, equalsIndex).trim();
-    const value = part.slice(equalsIndex + 1).trim();
-    if (key) {
-      fields.set(key, value);
-    }
-  });
-
-  return fields;
-}
-
-function cleanWikiText(value: string) {
-  return value
-    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\{\{SCP\|([^|{}]+)\|([^|{}]+)(?:\|[^{}]*)?\}\}/g, "$2 $1")
-    .replace(/\{\{Skill clickpic\|([^|{}]+)(?:\|[^{}]*)?\}\}/g, "$1")
-    .replace(/\{\{Fairycode\|([^|{}]+)\}\}/g, "$1")
-    .replace(/\{\{Boostable\|[^{}]*\}\}/g, "boostable")
-    .replace(/\{\{FloorNumber\|[^{}]*\}\}/g, "")
-    .replace(/\{\{[^{}|]+\|([^{}]+)\}\}/g, "$1")
-    .replace(/\{\{[^{}]+\}\}/g, "")
-    .replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, "$2")
-    .replace(/\[\[([^\]]+)\]\]/g, "$1")
-    .replace(/'''?/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 function parseListField(value?: string) {
   if (!value || /^none$/i.test(cleanWikiText(value))) {
     return [];
   }
 
-  return value
+  return uniqueCaseInsensitive(value
+    .replace(/<br\s*\/?>/gi, "\n")
     .split(/\n+/)
     .map((line) => line.replace(/^\*+\s*/, ""))
     .map(cleanWikiText)
-    .filter(Boolean);
+    .filter(Boolean));
+}
+
+function parseQuestRequirements(value?: string) {
+  const rawLines = parseListField(value);
+  const requirements: string[] = [];
+  let inQuestGroup = false;
+
+  for (const line of rawLines) {
+    if (/^Completion of the following quests:?$/i.test(line)) {
+      inQuestGroup = true;
+      continue;
+    }
+
+    if (/^The above quests all require/i.test(line)) {
+      inQuestGroup = true;
+      continue;
+    }
+
+    const looksLikeSkillRequirement = /\b\d{1,3}\s+(Attack|Defence|Strength|Hitpoints|Ranged|Prayer|Magic|Cooking|Woodcutting|Fletching|Fishing|Firemaking|Crafting|Smithing|Mining|Herblore|Agility|Thieving|Slayer|Farming|Runecraft|Hunter|Construction|Sailing)\b/i.test(line);
+    if (looksLikeSkillRequirement) {
+      inQuestGroup = false;
+    }
+    if (inQuestGroup && !looksLikeSkillRequirement && !/^Completion of\s+/i.test(line)) {
+      requirements.push(`Completion of ${line}`);
+      continue;
+    }
+
+    requirements.push(line);
+  }
+
+  return uniqueCaseInsensitive(requirements);
+}
+
+function parseQuestRewards(value?: string) {
+  if (!value) {
+    return [];
+  }
+
+  const rewardTemplate = extractTemplate(value, "Quest rewards");
+  if (rewardTemplate) {
+    const rewardFields = parseTemplateFields(rewardTemplate);
+    const rewards = parseListField(rewardFields.get("rewards") ?? rewardFields.get("reward"));
+    if (rewards.length) {
+      return rewards;
+    }
+  }
+
+  return parseListField(value)
+    .filter((reward) => !/^\{\{Quest rewards$/i.test(reward))
+    .filter((reward) => !/^\|?(name|image|qp|quest points|rewards)\s*=/i.test(reward))
+    .filter((reward) => reward !== "}}" && !/^\}\}$/i.test(reward));
+}
+
+function extractHeadingSection(wikitext: string, headingNames: string[]) {
+  const escapedNames = headingNames.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const headingPattern = new RegExp(`^==+\\s*(?:${escapedNames.join("|")})\\s*==+\\s*$`, "im");
+  const match = headingPattern.exec(wikitext);
+  if (!match || match.index === undefined) {
+    return undefined;
+  }
+
+  const sectionStart = match.index + match[0].length;
+  const sectionText = wikitext.slice(sectionStart);
+  const nextHeadingIndex = sectionText.search(/^==[^=][\s\S]*?==\s*$/m);
+
+  return (nextHeadingIndex === -1 ? sectionText : sectionText.slice(0, nextHeadingIndex)).trim();
 }
 
 function parseStartMap(value?: string) {
@@ -149,15 +119,18 @@ export function parseWikiQuestDetails(wikitext: string): WikiQuestDetails | null
   }
 
   const fields = parseTemplateFields(template);
+  const templateRewards = parseQuestRewards(fields.get("rewards") ?? fields.get("reward"));
+  const sectionRewards = parseQuestRewards(extractHeadingSection(wikitext, ["Reward", "Rewards"]));
 
   return {
     start: cleanWikiText(fields.get("start") ?? ""),
     startMap: parseStartMap(fields.get("startmap")),
     difficulty: cleanWikiText(fields.get("difficulty") ?? ""),
     length: cleanWikiText(fields.get("length") ?? ""),
-    requirements: parseListField(fields.get("requirements")),
+    requirements: parseQuestRequirements(fields.get("requirements")),
     items: parseListField(fields.get("items")),
     recommended: parseListField(fields.get("recommended")),
+    rewards: templateRewards.length ? templateRewards : sectionRewards,
     detailSource: "osrs-wiki-quest-details"
   };
 }

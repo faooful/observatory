@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityDetailCard } from "@/components/ActivityDetailCard";
 import { getActivities, getTabActivities } from "@/lib/activities/activityModel";
 import type { Activity, ActivityType } from "@/lib/activities/types";
-import { type PlayerLookup } from "@/lib/osrs/player";
+import { SKILL_ORDER, type PlayerLookup } from "@/lib/osrs/player";
 import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
@@ -25,11 +25,23 @@ const ACTIVITY_PANEL_ICONS: Partial<Record<ActivityType, string>> = {
   boss: "/osrs-icons/combat.png",
   clue: "/osrs-icons/collection-log.png"
 };
+const WORLD_MAP_ICON_URL = "https://oldschool.runescape.wiki/images/World_map_icon.png?6dae2";
+const STATS_ICON_URL = "https://oldschool.runescape.wiki/images/Stats_icon.png";
+const ACCOUNT_STAT_ICON_OVERRIDES: Record<string, string> = {
+  Total: STATS_ICON_URL,
+  Combat: "https://oldschool.runescape.wiki/images/Combat_icon.png",
+  Quests: "https://oldschool.runescape.wiki/images/Quest_point_icon.png"
+};
 
-const ACTIVITY_TABS: ActivityType[] = ["quest", "money", "boss"];
+const ACTIVITY_TABS: ActivityType[] = ["quest", "boss"];
+const SELECTABLE_ACTIVITY_TYPES = new Set<ActivityType>(ACTIVITY_TABS);
 
 function getUniqueSortedValues(values: Array<string | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right));
+}
+
+function getWikiIconUrl(label: string) {
+  return ACCOUNT_STAT_ICON_OVERRIDES[label] ?? `https://oldschool.runescape.wiki/images/${label.replace(/\s+/g, "_")}_icon.png`;
 }
 
 function readHistory() {
@@ -115,12 +127,14 @@ export function ActivitySidebar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingActivityId, setPendingActivityId] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<ActivityType | null>("money");
+  const [activeCategory, setActiveCategory] = useState<ActivityType | null>("quest");
   const [moneyCategoryFilter, setMoneyCategoryFilter] = useState("all");
   const [moneyIntensityFilter, setMoneyIntensityFilter] = useState("all");
   const [bossCategoryFilter, setBossCategoryFilter] = useState("all");
   const [bossDifficultyFilter, setBossDifficultyFilter] = useState("all");
   const [mapOnly, setMapOnly] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const accountBarRef = useRef<HTMLElement | null>(null);
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const resetView = useMapStore((state) => state.resetView);
   const clearSelection = useMapStore((state) => state.clearSelection);
@@ -135,10 +149,6 @@ export function ActivitySidebar() {
       boss: getTabActivities({ player }, "boss")
     }),
     [player]
-  );
-  const allTabActivities = useMemo(
-    () => [...tabActivitiesByType.quest, ...tabActivitiesByType.money, ...tabActivitiesByType.boss],
-    [tabActivitiesByType]
   );
   const moneyCategoryOptions = useMemo(
     () => getUniqueSortedValues(tabActivitiesByType.money.map((activity) => activity.moneyMaker?.category)),
@@ -204,12 +214,27 @@ export function ActivitySidebar() {
     : activeCategory === "money"
       ? "No eligible money makers found for this account yet."
       : "No eligible bosses found for this account yet.";
-  const selectedRecommendation = useMemo(
-    () => allTabActivities.find((activity) => activity.id === selectedActivityId) ?? null,
-    [allTabActivities, selectedActivityId]
+  const selectedActivity = useMemo(
+    () => activities.find((activity) => activity.id === selectedActivityId && SELECTABLE_ACTIVITY_TYPES.has(activity.type)) ?? null,
+    [activities, selectedActivityId]
   );
   const completedQuestCount = useMemo(() => Object.values(player?.quests ?? {}).filter((state) => state === 2).length, [player?.quests]);
-  const collectionLogLabel = player?.collectionLog ? `${player.collectionLog.uniqueObtained}/${player.collectionLog.uniqueItems}` : "-";
+  const accountStatRows = useMemo(() => {
+    if (!player) {
+      return [];
+    }
+
+    return [
+      { label: "Total", value: player.skills.Overall?.level ?? "-", iconUrl: getWikiIconUrl("Total") },
+      { label: "Combat", value: player.combatLevel ?? "-", iconUrl: getWikiIconUrl("Combat") },
+      { label: "Quests", value: player.questSource === "wikisync" ? completedQuestCount : "-", iconUrl: getWikiIconUrl("Quests") },
+      ...SKILL_ORDER.filter((skill) => skill !== "Overall").map((skill) => ({
+        label: skill,
+        value: player.skills[skill]?.level ?? "-",
+        iconUrl: getWikiIconUrl(skill)
+      }))
+    ];
+  }, [completedQuestCount, player]);
 
   const updateHistory = (nextUsername: string) => {
     writeHistory(nextUsername);
@@ -282,12 +307,22 @@ export function ActivitySidebar() {
       return;
     }
 
-    const pendingActivity = activities.find((activity) => activity.id === pendingActivityId);
+    const pendingActivity = activities.find((activity) => activity.id === pendingActivityId && SELECTABLE_ACTIVITY_TYPES.has(activity.type));
     if (pendingActivity) {
       focusActivity(pendingActivity);
     }
     setPendingActivityId(null);
   }, [activities, focusActivity, pendingActivityId, player]);
+
+  useEffect(() => {
+    if (!selectedActivity) {
+      return;
+    }
+
+    if (selectedActivity.type === "quest" || selectedActivity.type === "boss") {
+      setActiveCategory(selectedActivity.type);
+    }
+  }, [selectedActivity]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !player) {
@@ -311,10 +346,40 @@ export function ActivitySidebar() {
     }
   }, [player, selectedActivityId]);
 
+  useEffect(() => {
+    if (!statsOpen) {
+      return;
+    }
+
+    const closeStatsOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && accountBarRef.current?.contains(target)) {
+        return;
+      }
+
+      setStatsOpen(false);
+    };
+
+    const closeStatsOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setStatsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeStatsOnOutsidePointer);
+    document.addEventListener("keydown", closeStatsOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeStatsOnOutsidePointer);
+      document.removeEventListener("keydown", closeStatsOnEscape);
+    };
+  }, [statsOpen]);
+
   const returnToLookup = () => {
     setError(null);
     setPlayer(null);
     setMapOnly(false);
+    setStatsOpen(false);
     resetView();
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -331,12 +396,11 @@ export function ActivitySidebar() {
     <aside className="sidebar overlay-shell" aria-label="Observatory controls">
       {!player && !mapOnly ? (
         <section className="intro-overlay" aria-label="Enter OSRS username">
-          <h1 className="intro-title">Explore Gielinor</h1>
+          <h1 className="intro-title">
+            Explore <em>your</em> Gielinor
+          </h1>
           <div className="intro-actions">
             <form className="intro-card" onSubmit={handleSubmit}>
-              <span className="intro-plus" aria-hidden="true">
-                +
-              </span>
               <label className="sr-only" htmlFor="osrs-username">
                 OSRS username
               </label>
@@ -350,55 +414,63 @@ export function ActivitySidebar() {
                 placeholder="OSRS username"
                 value={username}
               />
-              <button className="intro-submit" type="submit" disabled={loading || !username.trim()} aria-label="Lookup username">
-                →
+              <button
+                className="intro-submit"
+                type="submit"
+                disabled={loading || !username.trim()}
+                aria-label={loading ? "Looking up username" : "Lookup username"}
+                aria-busy={loading}
+              >
+                {loading ? <span className="submit-spinner" aria-hidden="true" /> : "→"}
+              </button>
+              <button className="map-only-button" type="button" onClick={() => setMapOnly(true)}>
+                <img alt="" aria-hidden="true" src={WORLD_MAP_ICON_URL} />
+                <span>View Map</span>
               </button>
             </form>
-            <button className="map-only-button" type="button" onClick={() => setMapOnly(true)}>
-              View Map
-            </button>
           </div>
           {error ? <p className="notice is-error intro-error">{error}</p> : null}
         </section>
       ) : !player ? (
         <div className="hud-grid hud-grid--map-only">
           <section className="map-view-prompt" aria-label="Account lookup">
-            <div>
-              <strong>Viewing map</strong>
-              <span>Enter a username to see what the account can do</span>
-            </div>
-            <button type="button" onClick={() => setMapOnly(false)}>
-              Enter
+            <button className="map-entry-tab" type="button" onClick={() => setMapOnly(false)}>
+              Enter OSRS name
             </button>
           </section>
         </div>
       ) : (
-        <div className="hud-grid hud-grid--active">
-          <header className="account-bar" aria-label="Current player">
+        <div className={`hud-grid hud-grid--active${selectedActivity ? " has-selection" : ""}`}>
+          <header className="account-bar" aria-label="Current player" ref={accountBarRef}>
             <div className="account-main">
               <strong>{player.username}</strong>
-              <dl className="account-stats">
-                <div>
-                  <dt>Total</dt>
-                  <dd>{player.skills.Overall?.level ?? "-"}</dd>
-                </div>
-                <div>
-                  <dt>Combat</dt>
-                  <dd>{player.combatLevel ?? "-"}</dd>
-                </div>
-                <div>
-                  <dt>Quests</dt>
-                  <dd>{player.questSource === "wikisync" ? completedQuestCount : "-"}</dd>
-                </div>
-                <div>
-                  <dt>Log</dt>
-                  <dd>{collectionLogLabel}</dd>
-                </div>
-              </dl>
             </div>
-            <button type="button" onClick={returnToLookup}>
-              Change
-            </button>
+            <div className="account-actions">
+              <button className="stats-menu-button" type="button" aria-expanded={statsOpen} onClick={() => setStatsOpen((open) => !open)}>
+                <img className="stats-button-icon" src={STATS_ICON_URL} alt="" aria-hidden="true" />
+                <span>Stats</span>
+                <span className="stats-chevron" aria-hidden="true">⌄</span>
+              </button>
+              <button className="account-change-button" type="button" onClick={returnToLookup}>
+                Change
+              </button>
+            </div>
+            {statsOpen ? (
+              <div className="account-stats-menu" role="dialog" aria-label={`${player.username} stats`}>
+                <h2>Stats</h2>
+                <dl>
+                  {accountStatRows.map((stat) => (
+                    <div key={stat.label}>
+                      <dt>
+                        <img src={stat.iconUrl} alt="" aria-hidden="true" />
+                        <span>{stat.label}</span>
+                      </dt>
+                      <dd>{stat.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
           </header>
           <section
             className={`activity-dock recommendation-dashboard${activeCategory ? "" : " is-closed"}`}
@@ -427,11 +499,11 @@ export function ActivitySidebar() {
               ))}
             </nav>
             {activeCategory ? (
-              <>
-                {selectedRecommendation ? (
-                  <ActivityDetailCard activity={selectedRecommendation} onClose={clearSelection} />
+              <div className={`recommendation-groups${selectedActivity ? " is-detail-view" : ""}`} key={selectedActivity?.id ?? activeCategory}>
+                {selectedActivity ? (
+                  <ActivityDetailCard activity={selectedActivity} onClose={clearSelection} />
                 ) : (
-                  <div className="recommendation-groups">
+                  <>
                     {activeCategory === "quest" ? (
                       <div className="tab-summary-line">({activeCategoryCount}) Startable quests</div>
                     ) : activeCategory === "money" ? (
@@ -522,9 +594,9 @@ export function ActivitySidebar() {
                     {activeCategoryCount === 0 ? (
                       <p className="empty-state">{activeEmptyLabel}</p>
                     ) : null}
-                  </div>
+                  </>
                 )}
-              </>
+              </div>
             ) : null}
           </section>
         </div>

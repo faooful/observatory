@@ -2,12 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { Activity } from "@/lib/activities/types";
-import { MetricPill } from "./MetricPill";
 import { RequirementList } from "./RequirementList";
 import { RewardList } from "./RewardList";
 import { RouteSteps } from "./RouteSteps";
 
-const DPS_TOOL_URL = "https://tools.runescape.wiki/osrs-dps/";
 const FALLBACK_ICONS: Record<string, string> = {
   quest: "/osrs-icons/quest-start.png",
   money: "/osrs-icons/coins-10000.png",
@@ -18,6 +16,8 @@ const FALLBACK_ICONS: Record<string, string> = {
 type GearSlot = {
   slot: string;
   item: string;
+  wikiTitle?: string;
+  icon?: string;
 };
 
 type GearSetup = {
@@ -47,12 +47,12 @@ function wikiFileIcon(fileName: string) {
   return `https://oldschool.runescape.wiki/w/Special:Redirect/file/${encodeURIComponent(fileName)}`;
 }
 
-function itemIcon(item: string) {
-  return wikiFileIcon(`${item}.png`);
+function itemIcon(item: GearSlot) {
+  return item.icon ?? wikiFileIcon(`${item.wikiTitle ?? item.item}.png`);
 }
 
-function itemWikiUrl(item: string) {
-  return `https://oldschool.runescape.wiki/w/${encodeURIComponent(item.replace(/ /g, "_"))}`;
+function itemWikiUrl(item: GearSlot) {
+  return `https://oldschool.runescape.wiki/w/${encodeURIComponent((item.wikiTitle ?? item.item).replace(/ /g, "_"))}`;
 }
 
 function formatLogItem(item: { id: number; count?: number; name?: string }) {
@@ -304,6 +304,18 @@ function getMoneyMethodNotes(activity: Activity) {
   return notes;
 }
 
+function getUsefulDrops(activity: Activity) {
+  const metadataTags = new Set([
+    activity.boss?.category,
+    activity.boss?.difficulty,
+    activity.moneyMaker?.category,
+    activity.moneyMaker?.intensity,
+    activity.metrics?.gpPerHour ? `${activity.metrics.gpPerHour.toLocaleString()} GP/hr` : undefined
+  ].filter((tag): tag is string => Boolean(tag)));
+
+  return (activity.rewards ?? []).filter((reward) => !metadataTags.has(reward) && !/^Level \d+$/i.test(reward));
+}
+
 function GearSetupGrid({ activity }: { activity: Activity }) {
   const tierOrder = new Map<GearSetup["tier"], number>([
     ["Low", 1],
@@ -319,6 +331,8 @@ function GearSetupGrid({ activity }: { activity: Activity }) {
   const [selectedTier, setSelectedTier] = useState<GearSetup["tier"]>("Med");
   const activeStyle = selectedStyle && styles.includes(selectedStyle) ? selectedStyle : styles[0];
   const styleSetups = activeStyle ? setups.filter((setup) => setup.style === activeStyle) : setups;
+  const availableTiers = [...new Set(styleSetups.map((setup) => setup.tier))]
+    .sort((left, right) => (tierOrder.get(left) ?? 99) - (tierOrder.get(right) ?? 99));
   const selectedSetup = styleSetups.find((setup) => setup.tier === selectedTier) ?? styleSetups[0] ?? setups[0];
   const strategySource = setups.find((setup) => setup.source)?.source;
 
@@ -331,8 +345,7 @@ function GearSetupGrid({ activity }: { activity: Activity }) {
       <div className="section-heading-row">
         <h3>Example gear</h3>
         <span className="section-heading-actions">
-          {strategySource ? <a href={strategySource} rel="noreferrer" target="_blank">Strategy gear</a> : null}
-          <a href={DPS_TOOL_URL} rel="noreferrer" target="_blank">Tune DPS</a>
+          {strategySource ? <a className="strategy-gear-link" href={strategySource} rel="noreferrer" target="_blank">Strategy gear</a> : null}
         </span>
       </div>
       <div className="activity-filter-bar gear-picker" aria-label="Gear setup picker">
@@ -351,9 +364,9 @@ function GearSetupGrid({ activity }: { activity: Activity }) {
         <label>
           <span>Budget</span>
           <select aria-label="Gear budget" onChange={(event) => setSelectedTier(event.target.value as GearSetup["tier"])} value={selectedSetup.tier}>
-            {styleSetups.map((setup) => (
-              <option key={setup.tier} value={setup.tier}>
-                {setup.tier}
+            {availableTiers.map((tier) => (
+              <option key={tier} value={tier}>
+                {tier}
               </option>
             ))}
           </select>
@@ -376,12 +389,12 @@ function GearSetupGrid({ activity }: { activity: Activity }) {
                 aria-label={`${SLOT_LABELS[slot]}: ${item.item}`}
                 className="has-item"
                 data-tooltip={item.item}
-                href={itemWikiUrl(item.item)}
+                href={itemWikiUrl(item)}
                 key={slot}
                 rel="noreferrer"
                 target="_blank"
               >
-                <img alt="" aria-hidden="true" src={itemIcon(item.item)} />
+                <img alt="" aria-hidden="true" src={itemIcon(item)} />
               </a>
             );
           })}
@@ -391,27 +404,45 @@ function GearSetupGrid({ activity }: { activity: Activity }) {
   );
 }
 
-function UsefulLinks({ activity }: { activity: Activity }) {
-  if (!activity.links?.wiki && activity.type !== "boss") {
+function DetailFacts({ activity }: { activity: Activity }) {
+  const accountStatus = activity.requirements?.length
+    ? activity.requirements.map((requirement) => requirement.label).join(", ")
+    : activity.status === "ready"
+      ? "Ready to start"
+      : "Requirements needed";
+
+  return (
+    <section className="detail-facts" aria-label="Activity details">
+      <h3>Details</h3>
+      <div className="detail-fact-row">
+        <span>Category</span>
+        <strong>{activity.type}</strong>
+      </div>
+      <div className="detail-fact-row">
+        <span>{activity.type === "quest" ? "Start point" : "Location"}</span>
+        <strong>{activity.locationName}</strong>
+      </div>
+      <div className="detail-fact-row">
+        <span>{activity.type === "quest" ? "Account check" : "Status"}</span>
+        <strong>{activity.type === "quest" ? accountStatus : activity.status === "ready" ? "Ready" : "Requirements needed"}</strong>
+      </div>
+    </section>
+  );
+}
+
+function DetailActionBar({ activity }: { activity: Activity }) {
+  if (!activity.links?.wiki) {
     return null;
   }
 
   return (
-    <section>
-      <h3>Tools</h3>
-      <div className="detail-link-row">
-        {activity.links?.wiki ? (
-          <a href={activity.links.wiki} rel="noreferrer" target="_blank">
-            OSRS Wiki guide
-          </a>
-        ) : null}
-        {activity.type === "boss" ? (
-          <a href={DPS_TOOL_URL} rel="noreferrer" target="_blank">
-            DPS calculator
-          </a>
-        ) : null}
-      </div>
-    </section>
+    <div className="detail-action-bar" aria-label="Activity actions">
+      {activity.links?.wiki ? (
+        <a className="detail-secondary-action" href={activity.links.wiki} rel="noreferrer" target="_blank">
+          Wiki guide
+        </a>
+      ) : null}
+    </div>
   );
 }
 
@@ -490,12 +521,13 @@ function MoneyDetail({ activity }: { activity: Activity }) {
       </section>
       <RequirementList requirements={activity.requirements} />
       <RouteSteps steps={activity.route?.steps} title="How to do it" />
-      <UsefulLinks activity={activity} />
     </>
   );
 }
 
 function BossDetail({ activity }: { activity: Activity }) {
+  const usefulDrops = getUsefulDrops(activity);
+
   return (
     <>
       <section>
@@ -509,49 +541,44 @@ function BossDetail({ activity }: { activity: Activity }) {
       <RequirementList requirements={activity.requirements} />
       <RouteSteps steps={activity.route?.steps} title="How to get there" />
       <GearSetupGrid activity={activity} />
-      <RewardList rewards={activity.rewards?.slice(0, 4)} title="Useful drops / tags" />
-      <UsefulLinks activity={activity} />
+      <RewardList rewards={usefulDrops.slice(0, 6)} title="Useful drops" />
     </>
   );
 }
 
 function QuestDetail({ activity }: { activity: Activity }) {
+  const rewards = activity.rewards?.length ? activity.rewards : ["See the Wiki guide for the full quest reward list."];
+
   return (
     <>
       <section>
         <h3>Quest state</h3>
         <p>{activity.summary || activity.description}</p>
       </section>
-      <RequirementList requirements={activity.requirements} />
-      <RouteSteps steps={activity.route?.steps} title="Start point" />
-      <UsefulLinks activity={activity} />
+      <RewardList rewards={rewards} title="Rewards" />
     </>
   );
 }
 
 export function ActivityDetailCard({ activity, onClose }: { activity: Activity; onClose?: () => void }) {
-  const tierLabel = activity.status === "ready" ? "Available now" : "Requirements needed";
   const icon = activity.icon ?? FALLBACK_ICONS[activity.type];
 
   return (
     <div className="activity-detail">
-      <div className="detail-toolbar">
-        <div className="detail-kicker">{tierLabel}</div>
-        {onClose ? (
-          <button aria-label="Close recommendation" className="detail-close" type="button" onClick={onClose}>
-            X
-          </button>
-        ) : null}
-      </div>
       <div className="detail-title-row">
         {icon ? <img alt="" aria-hidden="true" className="detail-activity-icon" src={icon} /> : null}
         <div>
           <h2>{activity.title}</h2>
           <p>{activity.locationName}</p>
         </div>
-        <MetricPill activity={activity} />
+        {onClose ? (
+          <button aria-label="Close recommendation" className="detail-close" type="button" onClick={onClose}>
+            X
+          </button>
+        ) : null}
       </div>
       <CollectionLogDetail activity={activity} />
+      <DetailFacts activity={activity} />
       {activity.collectionLogPage ? null : activity.type === "boss" ? (
         <BossDetail activity={activity} />
       ) : activity.type === "money" ? (
@@ -559,6 +586,7 @@ export function ActivityDetailCard({ activity, onClose }: { activity: Activity; 
       ) : (
         <QuestDetail activity={activity} />
       )}
+      <DetailActionBar activity={activity} />
     </div>
   );
 }

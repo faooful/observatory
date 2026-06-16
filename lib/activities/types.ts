@@ -54,6 +54,8 @@ export type Activity = {
     items: Array<{
       slot: string;
       item: string;
+      wikiTitle?: string;
+      icon?: string;
     }>;
   }>;
   route?: { steps: string[] };

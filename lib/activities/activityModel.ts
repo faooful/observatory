@@ -671,7 +671,7 @@ function getDynamicQuestActivities(player: PlayerLookup): Activity[] {
       description: summary,
       summary,
       requirements,
-      rewards: marker.wikiDetails?.items?.slice(0, 5).map((item) => `Bring: ${item}`),
+      rewards: marker.wikiDetails?.rewards,
       route: routeSteps.length ? { steps: routeSteps } : undefined,
       links: marker.wikiUrl ? { wiki: marker.wikiUrl } : undefined,
       recommendationReason: `WikiSync currently reports ${marker.questName} as ${questStateLabel.toLowerCase()}.`

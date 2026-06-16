@@ -573,6 +573,7 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
 function ActivityMarker({ activity, manifest, view }: { activity: Activity; manifest: OsrsSceneManifest; view: SceneView }) {
   const group = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
+  const viewportSize = useThree((state) => state.size);
   const selectedActivityId = useMapStore((state) => state.selectedActivityId);
   const focusActivity = useMapStore((state) => state.focusActivity);
   const selected = selectedActivityId === activity.id;
@@ -583,18 +584,42 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
         ? "#ef766f"
         : "#63d7a6";
   const point = useRef(new Vector3());
+  const globePoint = useRef(new Vector3());
+  const offsetDirection = useRef(new Vector3(0, 1, 0));
+  const globeNormal = useRef(new Vector3(0, 1, 0));
+  const lod = useMemo(() => getLod(manifest), [manifest]);
+  const zoomEmphasis = MathUtils.smoothstep(view.distance, lod.planeDistance * 0.45, lod.globeDistance * 0.95);
 
-  useFrame(({ clock }) => {
+  useFrame(({ camera, clock }) => {
     if (!group.current) {
       return;
     }
 
     const morph = getProjectionMorph(view.distance, manifest.bounds, manifest.lod);
     mapWorldToSurface(activity.location.x, activity.location.y, manifest.bounds, manifest.projection, morph, OVERVIEW_PLANE_Y, point.current);
-    point.current.y += MathUtils.lerp(10, 34, morph);
+    if (manifest.projection) {
+      mapWorldToSurface(activity.location.x, activity.location.y, manifest.bounds, manifest.projection, 0, OVERVIEW_PLANE_Y, globePoint.current);
+      globeNormal.current
+        .copy(globePoint.current)
+        .sub(new Vector3(0, manifest.projection.radius * 0.18, 0))
+        .normalize();
+      offsetDirection.current.set(0, 1, 0).lerp(globeNormal.current, 1 - morph).normalize();
+    } else {
+      offsetDirection.current.set(0, 1, 0);
+    }
+
+    point.current.addScaledVector(offsetDirection.current, MathUtils.lerp(24, 34, morph));
     group.current.position.copy(point.current);
-    group.current.scale.setScalar(MathUtils.lerp(1.65, 1, morph));
-    group.current.rotation.y = clock.elapsedTime * 0.6;
+
+    const markerDistance = camera.position.distanceTo(point.current);
+    const perspectiveFov = "fov" in camera ? MathUtils.degToRad(camera.fov) : Math.PI / 4;
+    const worldScreenHeight = 2 * Math.tan(perspectiveFov / 2) * markerDistance;
+    const worldUnitsPerPixel = worldScreenHeight / Math.max(viewportSize.height, 1);
+    const targetMarkerPixels = MathUtils.lerp(42, 48, zoomEmphasis);
+    const projectedScale = (targetMarkerPixels * worldUnitsPerPixel) / 16;
+    const morphScale = MathUtils.lerp(0.92, 1.02, morph);
+    group.current.scale.setScalar(MathUtils.clamp(projectedScale * morphScale, 0.82, 2.15));
+    group.current.rotation.set(0, clock.elapsedTime * MathUtils.lerp(0.18, 0.34, zoomEmphasis), 0);
   });
 
   if (
@@ -623,16 +648,22 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
         document.body.style.cursor = "";
       }}
     >
-      <mesh scale={selected || hovered ? 1.25 : 1}>
+      <mesh scale={selected || hovered ? 1.28 : 1} renderOrder={5}>
         <octahedronGeometry args={[8, 0]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={selected || hovered ? 1.4 : 0.55} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={selected || hovered ? 1.55 : 1.05} flatShading />
       </mesh>
-      <mesh position={[0, -10, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <mesh position={[0, -10, 0]} rotation={[Math.PI / 2, 0, 0]} renderOrder={3}>
         <ringGeometry args={[7, 10, 28]} />
-        <meshBasicMaterial color={color} transparent opacity={selected || hovered ? 0.42 : 0.22} side={DoubleSide} />
+        <meshBasicMaterial color={color} transparent opacity={selected || hovered ? 0.56 : 0.34} side={DoubleSide} depthWrite={false} />
       </mesh>
       {(selected || hovered) && (
-        <Html position={[0, 18, 0]} center distanceFactor={38} style={{ pointerEvents: "none" }}>
+        <Html
+          position={[0, 18, 0]}
+          style={{
+            pointerEvents: "none",
+            transform: "translate3d(-50%, calc(-100% - 18px), 0)"
+          }}
+        >
           <div className="marker-label">{activity.title}</div>
         </Html>
       )}
@@ -643,7 +674,7 @@ function ActivityMarker({ activity, manifest, view }: { activity: Activity; mani
 function ActivityMarkers({ manifest, view }: { manifest: OsrsSceneManifest; view: SceneView }) {
   const player = useMapStore((state) => state.player);
   const visibleActivities = useMemo(
-    () => (player ? (["quest", "money", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
+    () => (player ? (["quest", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
     [player]
   );
 

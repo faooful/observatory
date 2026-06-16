@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { extractTemplates, parseTemplateFields, wikiFileIcon, wikiPageUrl } from "../lib/osrs/wikiParsing";
 
 const OSRS_WIKI_API_URL = "https://oldschool.runescape.wiki/api.php";
 const OUTPUT_PATH = path.join(process.cwd(), "data/activities/osrs-boss-strategy-gear.json");
@@ -17,7 +18,7 @@ type GearSetup = {
   style: string;
   note: string;
   source: string;
-  items: Array<{ slot: string; item: string }>;
+  items: Array<{ slot: string; item: string; wikiTitle?: string; icon?: string }>;
 };
 
 function slugify(value: string) {
@@ -27,12 +28,8 @@ function slugify(value: string) {
     .replace(/^-|-$/g, "");
 }
 
-function append(readingKey: boolean, key: string, value: string, text: string): [string, string] {
-  return readingKey ? [key + text, value] : [key, value + text];
-}
-
 function wikiUrl(title: string) {
-  return `https://oldschool.runescape.wiki/w/${encodeURIComponent(title.replace(/ /g, "_"))}`;
+  return wikiPageUrl(title);
 }
 
 async function fetchWikitext(page: string) {
@@ -58,98 +55,25 @@ async function fetchWikitext(page: string) {
   return payload.parse.wikitext;
 }
 
-function extractTemplates(text: string, name: string) {
-  const templates: string[] = [];
-  const needle = `{{${name}`;
-  let index = 0;
-
-  while ((index = text.indexOf(needle, index)) !== -1) {
-    let depth = 0;
-    let cursor = index;
-    for (; cursor < text.length - 1; cursor += 1) {
-      const pair = text.slice(cursor, cursor + 2);
-      if (pair === "{{") {
-        depth += 1;
-        cursor += 1;
-        continue;
-      }
-      if (pair === "}}") {
-        depth -= 1;
-        cursor += 1;
-        if (depth === 0) {
-          templates.push(text.slice(index, cursor + 1));
-          break;
-        }
-      }
-    }
-    index = cursor + 1;
-  }
-
-  return templates;
-}
-
-function getTemplateFields(template: string) {
-  const inner = template.replace(/^\{\{Recommended equipment\s*\|?/, "").replace(/\}\}$/, "");
-  const fields: Record<string, string> = {};
-  let key = "";
-  let value = "";
-  let readingKey = true;
-  let depth = 0;
-
-  const commit = () => {
-    if (key.trim()) {
-      fields[key.trim()] = value.trim();
-    }
-    key = "";
-    value = "";
-    readingKey = true;
-  };
-
-  for (let index = 0; index < inner.length; index += 1) {
-    const pair = inner.slice(index, index + 2);
-    if (pair === "{{") {
-      depth += 1;
-      [key, value] = append(readingKey, key, value, pair);
-      index += 1;
-      continue;
-    }
-    if (pair === "}}") {
-      depth -= 1;
-      [key, value] = append(readingKey, key, value, pair);
-      index += 1;
-      continue;
-    }
-
-    const char = inner[index];
-    if (char === "|" && depth === 0) {
-      commit();
-      continue;
-    }
-    if (char === "=" && depth === 0 && readingKey) {
-      readingKey = false;
-      continue;
-    }
-
-    [key, value] = append(readingKey, key, value, char);
-  }
-  commit();
-
-  return fields;
-}
-
 function extractPlinkItem(value: string) {
   const match = value.match(/\{\{\s*plink(?:p)?\s*\|([^|}]+)([^}]*)\}\}/i);
   if (!match) {
     return undefined;
   }
 
+  const wikiTitle = match[1].replace(/<[^>]+>/g, "").trim();
   const params = match[2] ?? "";
   const textOverride = params.match(/\|\s*txt\s*=\s*([^|}]+)/i)?.[1]?.trim();
-  return (textOverride || match[1]).replace(/<[^>]+>/g, "").trim();
+  const item = (textOverride || wikiTitle).replace(/<[^>]+>/g, "").trim();
+  return {
+    item,
+    wikiTitle,
+    icon: wikiFileIcon(`${wikiTitle}.png`)
+  };
 }
 
-function getSlotRanks(fields: Record<string, string>, slot: string) {
-  return Object.keys(fields)
+function getSlotRanks(fields: Map<string, string>, slot: string) {
+  return [...fields.keys()]
     .map((key) => key.match(new RegExp(`^${slot}(\\d+)$`))?.[1])
     .filter((rank): rank is string => Boolean(rank))
     .map(Number)
@@ -166,12 +90,12 @@ function chooseRankForTier(ranks: number[], tier: GearSetup["tier"]) {
   return ranks[ranks.length - 1];
 }
 
-function setupFromTier(fields: Record<string, string>, tier: GearSetup["tier"], source: string): GearSetup {
-  const style = fields.style || "Recommended";
+function setupFromTier(fields: Map<string, string>, tier: GearSetup["tier"], source: string): GearSetup {
+  const style = fields.get("style") || "Recommended";
   const items = SLOT_ORDER.flatMap((slot) => {
     const rank = chooseRankForTier(getSlotRanks(fields, slot), tier);
-    const item = extractPlinkItem(fields[`${slot}${rank}`] ?? "");
-    return item ? [{ slot, item }] : [];
+    const item = extractPlinkItem(fields.get(`${slot}${rank}`) ?? "");
+    return item ? [{ slot, ...item }] : [];
   });
 
   return {
@@ -212,12 +136,14 @@ function countSetupItems(setup: GearSetup) {
   return setup.items.length;
 }
 
-function compareStyle(left: Record<string, string>, right: Record<string, string>, preferredStyle?: string) {
+function compareStyle(left: Map<string, string>, right: Map<string, string>, preferredStyle?: string) {
+  const leftStyle = left.get("style");
+  const rightStyle = right.get("style");
   if (preferredStyle) {
-    if (left.style === preferredStyle) {
+    if (leftStyle === preferredStyle) {
       return -1;
     }
-    if (right.style === preferredStyle) {
+    if (rightStyle === preferredStyle) {
       return 1;
     }
   }
@@ -233,7 +159,7 @@ function compareStyle(left: Record<string, string>, right: Record<string, string
     return 9;
   };
 
-  return styleScore(left.style) - styleScore(right.style) || String(left.style).localeCompare(String(right.style));
+  return styleScore(leftStyle) - styleScore(rightStyle) || String(leftStyle).localeCompare(String(rightStyle));
 }
 
 async function main() {
@@ -248,8 +174,8 @@ async function main() {
     }
 
     const templates = extractTemplates(wikitext, "Recommended equipment")
-      .map(getTemplateFields)
-      .filter((template) => template.style)
+      .map(parseTemplateFields)
+      .filter((template) => template.has("style"))
       .sort((left, right) => compareStyle(left, right, boss.preferredStyle));
     if (!templates.length) {
       skipped.push(boss.title);

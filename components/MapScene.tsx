@@ -70,8 +70,9 @@ type ActivityDebugWindow = Window & {
 export function MapScene() {
   const [manifest, setManifest] = useState<OsrsSceneManifest | null>(null);
   const player = useMapStore((state) => state.player);
+  const clearSelection = useMapStore((state) => state.clearSelection);
   const visibleAvailableActivities = useMemo(
-    () => (player ? (["quest", "money", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
+    () => (player ? (["quest", "boss"] as const).flatMap((type) => getTabActivities({ player }, type)) : []),
     [player]
   );
   const activeBounds = useMemo(() => (manifest ? getManifestBounds(manifest) : sceneBounds), [manifest]);
@@ -113,6 +114,9 @@ export function MapScene() {
         gl={{ antialias: true }}
         onCreated={({ camera }) => {
           camera.lookAt(...activeTarget);
+        }}
+        onPointerMissed={() => {
+          clearSelection();
         }}
       >
         <color attach="background" args={["#050709"]} />

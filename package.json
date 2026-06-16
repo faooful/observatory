@@ -13,6 +13,7 @@
     "generate:bosses": "tsx scripts/generate-osrs-bosses.ts",
     "generate:boss-gear": "tsx scripts/generate-osrs-boss-strategy-gear.ts",
     "stitch:overview": "tsx scripts/stitch-overview-texture.ts",
+    "verify:wiki-content": "tsx scripts/verify-osrs-wiki-content.ts",
     "verify:markers": "tsx scripts/verify-osrs-marker-sources.ts",
     "verify:projection": "tsx scripts/verify-projection-roundtrip.ts"
   },

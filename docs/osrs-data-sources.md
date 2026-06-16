@@ -19,6 +19,10 @@ The Observatory should prefer public OSRS Wiki and open-source project data over
 
 The canonical in-app registry is `lib/osrs/sources.ts`. API responses should return source links from that registry instead of hardcoded display strings.
 
+## UI asset provenance
+
+The Observatory UI should use original CSS-generated parchment, stone, and bronze textures for interface chrome rather than copying OSRS client textures in bulk. Existing local OSRS icons and wiki-hosted item or skill icons may still be referenced where already used by the app, but those remain subject to their source-specific licensing and fan-content rules.
+
 ## Account intelligence source strategy
 
 The account lookup should be layered from most public/reliable to most opt-in/private:

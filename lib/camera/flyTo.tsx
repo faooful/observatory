@@ -514,9 +514,13 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   }, [rotationRequest]);
 
   useLayoutEffect(() => {
+    if (focusRequest || selectedPin) {
+      return;
+    }
+
     flyTo(initialPosition, initialTarget, false);
     isProgrammaticFlight.current = false;
-  }, [flyTo, initialPosition, initialTarget, viewVersion]);
+  }, [flyTo, focusRequest, initialPosition, initialTarget, selectedPin, viewVersion]);
 
   useEffect(() => {
     const element = gl.domElement;
