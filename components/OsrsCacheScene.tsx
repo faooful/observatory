@@ -38,6 +38,7 @@ const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
 const MAX_CONCURRENT_CHUNK_LOADS = 18;
 const ENABLE_CLOSE_TEXTURE_ATLAS = true;
+const ENABLE_STREAMED_CHUNKS = process.env.NEXT_PUBLIC_DISABLE_STREAMED_CHUNKS !== "true";
 
 type LoadedChunk = {
   asset: OsrsMapSquareAsset;
@@ -196,7 +197,7 @@ function getChunkRadius(distance: number, lod: SceneLod, movementSpeed: number) 
 }
 
 function shouldStreamChunks(distance: number, lod: SceneLod) {
-  return distance <= lod.planeDistance * 0.82;
+  return ENABLE_STREAMED_CHUNKS && distance <= lod.planeDistance * 0.82;
 }
 
 function sortWantedChunksByDistance(
@@ -1183,7 +1184,7 @@ export function OsrsCacheScene({ onManifest }: OsrsCacheSceneProps) {
     <group>
       <OverviewMapLOD manifest={manifest} view={view} />
       <ActivityMarkers manifest={manifest} view={view} />
-      <StreamedSceneChunks manifest={manifest} view={view} />
+      {ENABLE_STREAMED_CHUNKS ? <StreamedSceneChunks manifest={manifest} view={view} /> : null}
     </group>
   );
 }

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const apiRouteDir = resolve("app/api");
 const disabledApiRouteDir = resolve(".cache/github-pages/app-api");
+const exportedChunkDir = resolve("out/osrs-scene/osrs-238_2026-06-03/chunks");
 
 let movedApiRoute = false;
 
@@ -26,6 +27,8 @@ try {
 
   if (result.status !== 0) {
     process.exitCode = result.status ?? 1;
+  } else {
+    rmSync(exportedChunkDir, { force: true, recursive: true });
   }
 } finally {
   if (movedApiRoute) {
