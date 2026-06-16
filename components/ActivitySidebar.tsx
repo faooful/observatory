@@ -10,6 +10,7 @@ import { useMapStore } from "@/lib/store/useMapStore";
 
 const HISTORY_KEY = "observatory:osrs-username-history";
 const MAX_HISTORY = 5;
+const PLAYER_LOOKUP_AVAILABLE = process.env.NEXT_PUBLIC_PLAYER_LOOKUP_AVAILABLE !== "false";
 
 const ACTIVITY_PANEL_LABELS: Record<ActivityType, string> = {
   quest: "Quests",
@@ -253,8 +254,15 @@ export function ActivitySidebar() {
     setPlayer(null);
 
     try {
+      if (!PLAYER_LOOKUP_AVAILABLE) {
+        throw new Error("Player lookup is not available on the static GitHub Pages build. Use the local app for account lookups.");
+      }
+
       const response = await fetch(publicPath(`/api/player?username=${encodeURIComponent(normalized)}`));
-      const payload = (await response.json()) as PlayerLookup | { error?: string };
+      const contentType = response.headers.get("content-type") ?? "";
+      const payload = contentType.includes("application/json")
+        ? ((await response.json()) as PlayerLookup | { error?: string })
+        : { error: "Player lookup endpoint returned a non-JSON response." };
       if (!response.ok) {
         throw new Error("error" in payload && payload.error ? payload.error : "Could not load player.");
       }

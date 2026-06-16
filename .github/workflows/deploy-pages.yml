@@ -38,7 +38,8 @@ jobs:
         env:
           GITHUB_PAGES: "true"
           NEXT_PUBLIC_BASE_PATH: "/observatory"
-          NEXT_PUBLIC_DISABLE_STREAMED_CHUNKS: "true"
+          NEXT_PUBLIC_OSRS_CHUNK_ROOT: "https://raw.githubusercontent.com/faooful/observatory/main/public/osrs-scene/osrs-238_2026-06-03"
+          NEXT_PUBLIC_PLAYER_LOOKUP_AVAILABLE: "false"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

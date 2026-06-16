@@ -34,11 +34,12 @@ import {
 } from "@/lib/osrs-scene/projection";
 
 const SCENE_ROOT = publicPath("/osrs-scene/osrs-238_2026-06-03");
+const CHUNK_ROOT = process.env.NEXT_PUBLIC_OSRS_CHUNK_ROOT ?? SCENE_ROOT;
 const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
 const MAX_CONCURRENT_CHUNK_LOADS = 18;
 const ENABLE_CLOSE_TEXTURE_ATLAS = true;
-const ENABLE_STREAMED_CHUNKS = process.env.NEXT_PUBLIC_DISABLE_STREAMED_CHUNKS !== "true";
+const ENABLE_STREAMED_CHUNKS = true;
 
 type LoadedChunk = {
   asset: OsrsMapSquareAsset;
@@ -128,12 +129,12 @@ async function loadManifest() {
 
 async function loadChunk(asset: OsrsMapSquareAsset) {
   const [positions, colors, indices, uvs, textureIndices] = await Promise.all([
-    loadBinary(`${SCENE_ROOT}/${asset.positions}`, (buffer) => new Float32Array(buffer)),
-    loadBinary(`${SCENE_ROOT}/${asset.colors}`, (buffer) => new Float32Array(buffer)),
-    loadBinary(`${SCENE_ROOT}/${asset.indices}`, (buffer) => new Uint32Array(buffer)),
-    asset.uvs ? loadBinary(`${SCENE_ROOT}/${asset.uvs}`, (buffer) => new Float32Array(buffer)) : Promise.resolve(undefined),
+    loadBinary(`${CHUNK_ROOT}/${asset.positions}`, (buffer) => new Float32Array(buffer)),
+    loadBinary(`${CHUNK_ROOT}/${asset.colors}`, (buffer) => new Float32Array(buffer)),
+    loadBinary(`${CHUNK_ROOT}/${asset.indices}`, (buffer) => new Uint32Array(buffer)),
+    asset.uvs ? loadBinary(`${CHUNK_ROOT}/${asset.uvs}`, (buffer) => new Float32Array(buffer)) : Promise.resolve(undefined),
     asset.textureIndices
-      ? loadBinary(`${SCENE_ROOT}/${asset.textureIndices}`, (buffer) => new Float32Array(buffer))
+      ? loadBinary(`${CHUNK_ROOT}/${asset.textureIndices}`, (buffer) => new Float32Array(buffer))
       : Promise.resolve(undefined)
   ]);
 
