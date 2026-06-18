@@ -1,0 +1,5 @@
+{
+  "env": {
+    "NEXT_PUBLIC_OSRS_CHUNK_ROOT": "https://raw.githubusercontent.com/faooful/observatory/main/public/osrs-scene/osrs-238_2026-06-03"
+  }
+}
