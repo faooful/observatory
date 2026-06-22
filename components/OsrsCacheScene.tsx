@@ -34,7 +34,14 @@ import {
 } from "@/lib/osrs-scene/projection";
 
 const SCENE_ROOT = publicPath("/osrs-scene/osrs-238_2026-06-03");
-const CHUNK_ROOT = process.env.NEXT_PUBLIC_OSRS_CHUNK_ROOT ?? SCENE_ROOT;
+const REMOTE_CHUNK_ROOT =
+  "https://observatory-osrs-chunks.faooful.workers.dev/osrs-scene/osrs-238_2026-06-03";
+const IS_LOCAL_HOST =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "[::1]");
+const CHUNK_ROOT = process.env.NEXT_PUBLIC_OSRS_CHUNK_ROOT ?? (IS_LOCAL_HOST ? SCENE_ROOT : REMOTE_CHUNK_ROOT);
 const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
 const MAX_CONCURRENT_CHUNK_LOADS = 18;

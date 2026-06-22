@@ -1,5 +1,5 @@
 {
   "env": {
-    "NEXT_PUBLIC_OSRS_CHUNK_ROOT": "https://raw.githubusercontent.com/faooful/observatory/main/public/osrs-scene/osrs-238_2026-06-03"
+    "NEXT_PUBLIC_OSRS_CHUNK_ROOT": "https://observatory-osrs-chunks.faooful.workers.dev/osrs-scene/osrs-238_2026-06-03"
   }
 }
