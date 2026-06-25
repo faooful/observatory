@@ -5458,45 +5458,19 @@ input {
   justify-content: start;
 }
 
-.hud-grid--active {
-  inset: 0;
-  width: auto;
-  height: auto;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-}
-
-.hud-grid--active .account-bar {
-  position: fixed;
-  top: max(16px, env(safe-area-inset-top));
-  right: 16px;
-  left: 16px;
-  z-index: 16;
-  width: auto;
-  max-width: none;
-  justify-self: stretch;
-}
-
-.hud-grid--active .account-stats-menu {
-  top: calc(100% + 10px);
-  right: 0;
-  bottom: auto;
-}
-
-.hud-grid--active .source-info-panel {
-  position: fixed;
-  top: 94px;
-  right: 16px;
-  bottom: auto;
-  width: min(380px, calc(100vw - 32px));
-  max-height: min(560px, calc(100vh - 116px));
-}
-
 @media (max-width: 760px) {
   :root {
     --dock-bottom: 0px;
     --dock-x: 0px;
     --mobile-detail-map-reveal: clamp(72px, 13vh, 118px);
+  }
+
+  .hud-grid--active {
+    inset: 0;
+    width: auto;
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
 
   .map-view-prompt,
@@ -5612,14 +5586,24 @@ input {
   }
 
   .hud-grid--active .account-bar {
+    position: fixed;
     top: env(safe-area-inset-top);
     right: 0;
     left: 0;
+    z-index: 16;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 10px;
     width: auto;
+    max-width: none;
     min-height: 96px;
+    justify-self: stretch;
     padding: 12px 14px;
+  }
+
+  .hud-grid--active .account-stats-menu {
+    top: calc(100% + 10px);
+    right: 0;
+    bottom: auto;
   }
 
   .hud-grid--active .account-main strong {
