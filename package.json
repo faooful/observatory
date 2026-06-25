@@ -13,6 +13,7 @@
     "generate:money-makers": "tsx scripts/generate-osrs-money-makers.ts",
     "generate:bosses": "tsx scripts/generate-osrs-bosses.ts",
     "generate:boss-gear": "tsx scripts/generate-osrs-boss-strategy-gear.ts",
+    "pack:chunks": "tsx scripts/pack-osrs-chunks.ts",
     "stitch:overview": "tsx scripts/stitch-overview-texture.ts",
     "verify:wiki-content": "tsx scripts/verify-osrs-wiki-content.ts",
     "verify:markers": "tsx scripts/verify-osrs-marker-sources.ts",

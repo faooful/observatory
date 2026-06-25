@@ -13,6 +13,7 @@ export type OsrsMapSquareAsset = {
   mapY: number;
   vertexCount: number;
   indexCount: number;
+  packed?: string;
   positions: string;
   colors: string;
   uvs?: string;

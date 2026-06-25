@@ -44,9 +44,16 @@ const IS_LOCAL_HOST =
 const CHUNK_ROOT = process.env.NEXT_PUBLIC_OSRS_CHUNK_ROOT ?? (IS_LOCAL_HOST ? SCENE_ROOT : REMOTE_CHUNK_ROOT);
 const MAP_SQUARE_SIZE = 64;
 const RETAIN_CHUNK_MS = 5200;
-const MAX_CONCURRENT_CHUNK_LOADS = 18;
+const MAX_CONCURRENT_CHUNK_LOADS = 6;
 const ENABLE_CLOSE_TEXTURE_ATLAS = true;
 const ENABLE_STREAMED_CHUNKS = true;
+const PACKED_CHUNK_MAGIC = 0x4f534350;
+const PACKED_CHUNK_VERSION = 1;
+const PACKED_CHUNK_HAS_UVS = 1 << 0;
+const PACKED_CHUNK_HAS_TEXTURE_INDICES = 1 << 1;
+const PACKED_UV_SCALE = 32768;
+const PACKED_POSITION_SCALE = 128;
+const failedPackedChunks = new Set<string>();
 
 type LoadedChunk = {
   asset: OsrsMapSquareAsset;
@@ -110,7 +117,7 @@ type ObservatoryDebugWindow = Window & {
   };
 };
 
-async function loadBinary<T extends Float32Array | Uint32Array | Int32Array>(
+async function loadBinary<T>(
   path: string,
   create: (buffer: ArrayBuffer) => T
 ) {
@@ -135,6 +142,19 @@ async function loadManifest() {
 }
 
 async function loadChunk(asset: OsrsMapSquareAsset) {
+  if (asset.packed && !failedPackedChunks.has(asset.packed)) {
+    try {
+      return await loadPackedChunk(asset);
+    } catch (error) {
+      failedPackedChunks.add(asset.packed);
+      console.warn(`Falling back to split chunk files for ${getChunkKey(asset)}`, error);
+    }
+  }
+
+  return loadSplitChunk(asset);
+}
+
+async function loadSplitChunk(asset: OsrsMapSquareAsset) {
   const [positions, colors, indices, uvs, textureIndices] = await Promise.all([
     loadBinary(`${CHUNK_ROOT}/${asset.positions}`, (buffer) => new Float32Array(buffer)),
     loadBinary(`${CHUNK_ROOT}/${asset.colors}`, (buffer) => new Float32Array(buffer)),
@@ -144,6 +164,69 @@ async function loadChunk(asset: OsrsMapSquareAsset) {
       ? loadBinary(`${CHUNK_ROOT}/${asset.textureIndices}`, (buffer) => new Float32Array(buffer))
       : Promise.resolve(undefined)
   ]);
+
+  return { asset, positions, colors, indices, uvs, textureIndices };
+}
+
+function alignOffset(offset: number, byteAlignment: number) {
+  return Math.ceil(offset / byteAlignment) * byteAlignment;
+}
+
+async function loadPackedChunk(asset: OsrsMapSquareAsset): Promise<LoadedChunk> {
+  const buffer = await loadBinary(`${CHUNK_ROOT}/${asset.packed}`, (nextBuffer) => nextBuffer);
+  const view = new DataView(buffer);
+  const magic = view.getUint32(0, true);
+  const version = view.getUint32(4, true);
+  if (magic !== PACKED_CHUNK_MAGIC || version !== PACKED_CHUNK_VERSION) {
+    throw new Error(`Unsupported packed chunk ${asset.packed}`);
+  }
+
+  const flags = view.getUint32(8, true);
+  const vertexCount = view.getUint32(12, true);
+  const indexCount = view.getUint32(16, true);
+  let offset = 32;
+
+  const packedPositions = new Int16Array(buffer, offset, vertexCount * 3);
+  offset += packedPositions.byteLength;
+  const packedColors = new Uint8Array(buffer, offset, vertexCount * 4);
+  offset += packedColors.byteLength;
+
+  const positions = new Float32Array(vertexCount * 3);
+  const colors = new Float32Array(vertexCount * 4);
+  const worldBaseX = asset.mapX * MAP_SQUARE_SIZE;
+  const worldBaseY = asset.mapY * MAP_SQUARE_SIZE;
+  for (let index = 0; index < vertexCount; index += 1) {
+    positions[index * 3] = worldBaseX + packedPositions[index * 3] / PACKED_POSITION_SCALE;
+    positions[index * 3 + 1] = packedPositions[index * 3 + 1] / PACKED_POSITION_SCALE;
+    positions[index * 3 + 2] = worldBaseY + packedPositions[index * 3 + 2] / PACKED_POSITION_SCALE;
+    colors[index * 4] = packedColors[index * 4] / 255;
+    colors[index * 4 + 1] = packedColors[index * 4 + 1] / 255;
+    colors[index * 4 + 2] = packedColors[index * 4 + 2] / 255;
+    colors[index * 4 + 3] = packedColors[index * 4 + 3] / 255;
+  }
+
+  let uvs: Float32Array | undefined;
+  if (flags & PACKED_CHUNK_HAS_UVS) {
+    const packedUvs = new Uint16Array(buffer, offset, vertexCount * 2);
+    offset += packedUvs.byteLength;
+    uvs = new Float32Array(vertexCount * 2);
+    for (let index = 0; index < packedUvs.length; index += 1) {
+      uvs[index] = packedUvs[index] / PACKED_UV_SCALE;
+    }
+  }
+
+  let textureIndices: Float32Array | undefined;
+  if (flags & PACKED_CHUNK_HAS_TEXTURE_INDICES) {
+    const packedTextureIndices = new Uint16Array(buffer, offset, vertexCount);
+    offset += packedTextureIndices.byteLength;
+    textureIndices = new Float32Array(vertexCount);
+    for (let index = 0; index < packedTextureIndices.length; index += 1) {
+      textureIndices[index] = packedTextureIndices[index];
+    }
+  }
+
+  offset = alignOffset(offset, 4);
+  const indices = new Uint32Array(buffer, offset, indexCount);
 
   return { asset, positions, colors, indices, uvs, textureIndices };
 }
