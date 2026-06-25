@@ -29,7 +29,8 @@ const ACTIVITY_PANEL_ICONS: Partial<Record<ActivityType, string>> = {
   clue: publicPath("/osrs-icons/collection-log.png")
 };
 const WORLD_MAP_ICON_URL = "https://oldschool.runescape.wiki/images/World_map_icon.png?6dae2";
-const STATS_ICON_URL = "https://oldschool.runescape.wiki/images/Stats_icon.png";
+const STATS_ICON_URL = "https://oldschool.runescape.wiki/images/Skills_icon.png";
+const SOURCE_INFO_ICON_URL = publicPath("/osrs-icons/lumbridge-guide.png");
 const ACCOUNT_STAT_ICON_OVERRIDES: Record<string, string> = {
   Total: STATS_ICON_URL,
   Combat: "https://oldschool.runescape.wiki/images/Combat_icon.png",
@@ -202,7 +203,7 @@ function SourceInfoControl() {
         title="Data credits and sources"
         type="button"
       >
-        <span aria-hidden="true">i</span>
+        <img alt="" aria-hidden="true" src={SOURCE_INFO_ICON_URL} />
       </button>
       {open ? (
         <div className="source-info-panel" role="dialog" aria-label="Data credits and sources">
@@ -544,8 +545,8 @@ export function ActivitySidebar() {
                 <img alt="" aria-hidden="true" src={WORLD_MAP_ICON_URL} />
                 <span>View Map</span>
               </button>
+              <SourceInfoControl />
             </form>
-            <SourceInfoControl />
           </div>
           {error ? <p className="notice is-error intro-error">{error}</p> : null}
         </section>
@@ -555,8 +556,8 @@ export function ActivitySidebar() {
             <button className="map-entry-tab" type="button" onClick={() => setMapOnly(false)}>
               Enter OSRS name
             </button>
+            <SourceInfoControl />
           </section>
-          <SourceInfoControl />
         </div>
       ) : (
         <div className={`hud-grid hud-grid--active${selectedActivity ? " has-selection" : ""}`}>

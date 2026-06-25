@@ -5190,18 +5190,17 @@ input {
   font-size: 1rem;
   font-weight: 700;
   line-height: 1;
+  padding: 0;
   box-shadow: none;
 }
 
-.source-info-button span {
-  display: grid;
-  width: 18px;
-  height: 18px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
-  color: inherit;
-  font: inherit;
+.source-info-button img {
+  display: block;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
 }
 
 .source-info-button:hover,
@@ -5318,21 +5317,139 @@ input {
   line-height: 1.35;
 }
 
-.intro-actions > .source-info-control,
-.hud-grid--map-only > .source-info-control {
-  align-self: center;
+.intro-card .source-info-control,
+.map-view-prompt .source-info-control,
+.account-actions .source-info-control {
+  display: flex;
+}
+
+.intro-card .source-info-button {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  border-radius: 12px;
+}
+
+.map-view-prompt {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.map-view-prompt .source-info-button {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 16px;
+  background: var(--dock-surface);
+  box-shadow: var(--dock-shadow);
+  backdrop-filter: saturate(1.8) blur(26px);
 }
 
 .account-bar {
-  padding-right: 258px;
+  padding-right: 334px;
 }
 
 .account-actions {
   align-items: stretch;
+  gap: 8px;
 }
 
-.account-actions .source-info-control {
-  display: flex;
+.account-actions .stats-menu-button {
+  width: 132px;
+  justify-content: center;
+  padding-inline: 12px;
+}
+
+.account-actions .account-change-button {
+  width: 112px;
+  justify-content: center;
+  padding-inline: 12px;
+}
+
+.account-actions .source-info-button {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  border-radius: 12px;
+}
+
+.account-actions .source-info-button img {
+  width: 20px;
+  height: 20px;
+}
+
+.stats-button-icon {
+  flex: 0 0 22px;
+}
+
+.hud-grid--active .account-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 16px;
+  align-items: center;
+  padding: 10px 18px 10px 92px;
+}
+
+.hud-grid--active .account-main {
+  min-width: 0;
+}
+
+.hud-grid--active .account-main strong {
+  overflow: hidden;
+  font-size: 1.22rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-grid--active .account-actions {
+  position: static;
+  display: grid;
+  grid-template-columns: 118px 102px 44px;
+  gap: 8px;
+  align-items: center;
+  justify-content: end;
+}
+
+.hud-grid--active .account-actions button {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 14px;
+}
+
+.hud-grid--active .account-actions .stats-menu-button {
+  width: 118px;
+  gap: 8px;
+  justify-content: center;
+}
+
+.hud-grid--active .account-actions .account-change-button {
+  width: 102px;
+}
+
+.hud-grid--active .account-actions .source-info-control,
+.hud-grid--active .account-actions .source-info-button {
+  width: 44px;
+  min-width: 44px;
+}
+
+.hud-grid--active .account-actions .source-info-button {
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.hud-grid--active .account-actions .source-info-button img {
+  width: 18px;
+  height: 18px;
+}
+
+.hud-grid--active .source-info-panel {
+  right: 0;
 }
 
 .hud-grid--map-only {

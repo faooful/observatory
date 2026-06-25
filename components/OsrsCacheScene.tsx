@@ -580,6 +580,88 @@ function SceneChunk({ chunk, manifest, opacity }: { chunk: LoadedChunk; manifest
   );
 }
 
+function ChunkLoadingEffect({
+  asset,
+  manifest,
+  opacity
+}: {
+  asset: OsrsMapSquareAsset;
+  manifest: OsrsSceneManifest;
+  opacity: number;
+}) {
+  const material = useRef<ShaderMaterial>(null);
+  const position = useMemo(() => {
+    const { centerX, centerY } = getSceneCenter(manifest);
+    const chunkCenterX = (asset.mapX + 0.5) * MAP_SQUARE_SIZE;
+    const chunkCenterY = (asset.mapY + 0.5) * MAP_SQUARE_SIZE;
+    return [chunkCenterX - centerX, OVERVIEW_PLANE_Y + 4, -(chunkCenterY - centerY)] as const;
+  }, [asset.mapX, asset.mapY, manifest]);
+
+  useFrame(({ clock }, delta) => {
+    if (!material.current) {
+      return;
+    }
+
+    material.current.uniforms.time.value = clock.elapsedTime;
+    material.current.uniforms.effectOpacity.value = MathUtils.damp(
+      material.current.uniforms.effectOpacity.value,
+      opacity,
+      10,
+      delta
+    );
+  });
+
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+      <planeGeometry args={[MAP_SQUARE_SIZE * 0.96, MAP_SQUARE_SIZE * 0.96, 1, 1]} />
+      <shaderMaterial
+        ref={material}
+        transparent
+        depthWrite={false}
+        depthTest
+        side={DoubleSide}
+        uniforms={{
+          time: { value: 0 },
+          effectOpacity: { value: 0 }
+        }}
+        vertexShader={`
+          varying vec2 vUv;
+
+          void main() {
+            vUv = uv;
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+          }
+        `}
+        fragmentShader={`
+          uniform float time;
+          uniform float effectOpacity;
+          varying vec2 vUv;
+
+          float band(float value, float center, float width) {
+            return 1.0 - smoothstep(width * 0.35, width, abs(value - center));
+          }
+
+          void main() {
+            vec2 centered = vUv - 0.5;
+            float edge = smoothstep(0.5, 0.38, max(abs(centered.x), abs(centered.y)));
+            float diagonal = fract((vUv.x + vUv.y) * 0.72 - time * 0.52);
+            float shimmer = band(diagonal, 0.5, 0.23);
+            float pulse = 0.58 + 0.42 * sin(time * 3.2 + vUv.x * 5.4 + vUv.y * 3.1);
+            float grid = max(band(fract(vUv.x * 4.0), 0.5, 0.08), band(fract(vUv.y * 4.0), 0.5, 0.08));
+            float alpha = edge * effectOpacity * (0.06 + shimmer * 0.14 + grid * 0.035 + pulse * 0.035);
+            vec3 base = mix(vec3(0.22, 0.45, 0.58), vec3(0.76, 0.92, 0.98), shimmer * 0.6 + pulse * 0.16);
+            gl_FragColor = vec4(base, alpha);
+            if (gl_FragColor.a < 0.01) {
+              discard;
+            }
+          }
+        `}
+      />
+    </mesh>
+  );
+}
+
 function ActivityMarker({ activity, manifest, view }: { activity: Activity; manifest: OsrsSceneManifest; view: SceneView }) {
   const group = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
@@ -1131,12 +1213,28 @@ function StreamedSceneChunks({
     }
   }, [assetsByKey, view.chunkPriorityCenter, wantedKeys]);
 
-  if (closeBlend <= 0.01 || chunks.size === 0) {
+  const loadingAssets = useMemo(
+    () =>
+      Array.from(loading)
+        .map((key) => assetsByKey.get(key))
+        .filter((asset): asset is OsrsMapSquareAsset => Boolean(asset)),
+    [assetsByKey, loading]
+  );
+
+  if (closeBlend <= 0.01 || (chunks.size === 0 && loadingAssets.length === 0)) {
     return null;
   }
 
   return (
     <group>
+      {loadingAssets.map((asset) => (
+        <ChunkLoadingEffect
+          key={`loading-${getChunkKey(asset)}`}
+          asset={asset}
+          manifest={manifest}
+          opacity={closeBlend}
+        />
+      ))}
       {Array.from(chunks.entries()).map(([key, chunk]) => (
         <group key={key}>
           <SceneChunk chunk={chunk} manifest={manifest} opacity={closeBlend} />
