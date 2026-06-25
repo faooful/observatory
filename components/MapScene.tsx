@@ -50,11 +50,15 @@ function getManifestBounds(manifest: OsrsSceneManifest): TerrainBounds {
 
 function CameraClip({ far }: { far: number }) {
   const camera = useThree((state) => state.camera);
+  const size = useThree((state) => state.size);
 
   useEffect(() => {
     camera.far = far;
+    if ("fov" in camera) {
+      camera.fov = size.width <= 760 ? 50 : 42;
+    }
     camera.updateProjectionMatrix();
-  }, [camera, far]);
+  }, [camera, far, size.width]);
 
   return null;
 }
@@ -112,6 +116,7 @@ export function MapScene() {
           far: activeRadius * 12
         }}
         gl={{ antialias: true }}
+        dpr={[1, 1.5]}
         onCreated={({ camera }) => {
           camera.lookAt(...activeTarget);
         }}

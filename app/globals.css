@@ -5471,24 +5471,52 @@ input {
     max-height: min(560px, calc(100vh - var(--dock-bottom) - 94px));
   }
 
-  .account-bar {
-    padding-right: 12px;
+  .hud-grid--active .account-bar {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 10px;
+    width: min(420px, calc(100vw - 24px));
+    padding: 12px 12px 12px 74px;
   }
 
-  .account-actions {
+  .hud-grid--active .account-main strong {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
+
+  .hud-grid--active .account-actions {
     position: static;
     grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 46px;
-    margin-top: 8px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px;
+    gap: 8px;
+    width: 100%;
+    margin-top: 0;
   }
 
-  .account-actions button {
+  .hud-grid--active .account-actions button {
+    height: 42px;
+    min-height: 42px;
     padding-inline: 10px;
   }
 
-  .account-actions .source-info-control,
-  .account-actions .source-info-button {
-    width: 46px;
+  .hud-grid--active .account-actions .stats-menu-button,
+  .hud-grid--active .account-actions .account-change-button {
+    width: auto;
+  }
+
+  .hud-grid--active .account-actions .source-info-control,
+  .hud-grid--active .account-actions .source-info-button {
+    width: 42px;
+    min-width: 42px;
+  }
+
+  .hud-grid--active .account-actions .source-info-button {
+    height: 42px;
+    min-height: 42px;
+  }
+
+  .hud-grid--active .account-actions .source-info-button img {
+    width: 17px;
+    height: 17px;
   }
 }

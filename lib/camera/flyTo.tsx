@@ -308,6 +308,8 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
   const lastWheelAt = useRef(0);
   const lastSettledDistance = useRef(0);
   const activeFlight = useRef<CameraFlight | null>(null);
+  const initializedView = useRef(false);
+  const lastAppliedViewVersion = useRef(viewVersion);
 
   const enqueueWheelZoom = useCallback((clientX: number, clientY: number, deltaY: number) => {
     const currentControls = controls.current;
@@ -487,7 +489,6 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
     const focusTarget = focusRequest ?? selectedPin;
 
     if (!focusTarget) {
-      flyTo(initialPosition, initialTarget, false);
       return;
     }
 
@@ -495,7 +496,7 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
     const position = target.clone().add(new Vector3(0, 242, 164));
     cameraTargetWorld.current = { x: focusTarget.x, y: focusTarget.y };
     flyTo(position, target, true);
-  }, [bounds, flyTo, focusRequest, initialPosition, initialTarget, projection, selectedPin, viewVersion]);
+  }, [bounds, flyTo, focusRequest, projection, selectedPin]);
 
   useEffect(() => {
     if (!rotationRequest || Math.abs(rotationRequest.deltaRadians) < 0.0001) {
@@ -518,8 +519,17 @@ export function CameraRig({ bounds, pins, defaultTarget = [0, 0, 0], defaultWorl
       return;
     }
 
+    const shouldResetView = !initializedView.current || lastAppliedViewVersion.current !== viewVersion;
+    if (!shouldResetView) {
+      return;
+    }
+
     flyTo(initialPosition, initialTarget, false);
     isProgrammaticFlight.current = false;
+    activeFlight.current = null;
+    wheelZoomDelta.current = 0;
+    initializedView.current = true;
+    lastAppliedViewVersion.current = viewVersion;
   }, [flyTo, focusRequest, initialPosition, initialTarget, selectedPin, viewVersion]);
 
   useEffect(() => {
