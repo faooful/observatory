@@ -275,6 +275,7 @@ function normalizeIconSubject(value: string) {
 function getMoneyMakerIconSubject(title: string, category: string) {
   const normalizedTitle = title.trim();
   const specificMatches: Array<[RegExp, string]> = [
+    [/zulrah/i, "Zulrah (serpentine)"],
     [/mole parts/i, "Mole claw"],
     [/crystal keys/i, "Crystal key"],
     [/eternal glories/i, "Amulet of eternal glory"],
@@ -319,13 +320,46 @@ function getMoneyMakerIconSubject(title: string, category: string) {
   return "";
 }
 
+const MONEY_MAKER_ICON_FILE_OVERRIDES: Array<[RegExp, string]> = [
+  [/vorkath/i, "Vorkath.png"],
+  [/zulrah/i, "Zulrah (serpentine).png"],
+  [/general graardor/i, "General Graardor.png"],
+  [/tombs of amascut/i, "Tombs of Amascut.png"]
+];
+
 function getMoneyMakerIcon(title: string, category: string) {
-  const subject = getMoneyMakerIconSubject(title, category);
-  return subject ? getWikiFileIcon(`${subject}.png`) : publicPath("/osrs-icons/coins-10000.png");
+  const override = MONEY_MAKER_ICON_FILE_OVERRIDES.find(([pattern]) => pattern.test(title));
+  if (override) {
+    return getWikiFileIcon(override[1]);
+  }
+
+  return publicPath("/osrs-icons/coins-10000.png");
 }
 
+const BOSS_ICON_FILE_OVERRIDES: Record<string, string> = {
+  zulrah: "Zulrah (serpentine).png"
+};
+
+const BOSS_LOCAL_ICON_OVERRIDES = new Set([
+  "alchemical hydra",
+  "barrows",
+  "barrows brothers",
+  "gauntlet",
+  "grotesque guardians",
+  "hueycoatl",
+  "nightmare",
+  "phantom muspah",
+  "phosani's nightmare",
+  "royal titans"
+]);
+
 function getBossIcon(title: string) {
-  return getWikiFileIcon(`${normalizeIconSubject(title)}.png`);
+  const subject = normalizeIconSubject(title);
+  if (BOSS_LOCAL_ICON_OVERRIDES.has(subject.toLowerCase())) {
+    return publicPath("/osrs-icons/combat.png");
+  }
+
+  return getWikiFileIcon(BOSS_ICON_FILE_OVERRIDES[subject.toLowerCase()] ?? `${subject}.png`);
 }
 
 function getWikiMoneyMakerDifficulty(moneyMaker: WikiMoneyMaker): NonNullable<Activity["metrics"]>["difficulty"] {

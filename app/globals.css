@@ -5458,24 +5458,168 @@ input {
   justify-content: start;
 }
 
+.hud-grid--active {
+  inset: 0;
+  width: auto;
+  height: auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.hud-grid--active .account-bar {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  left: 16px;
+  z-index: 16;
+  width: auto;
+  max-width: none;
+  justify-self: stretch;
+}
+
+.hud-grid--active .account-stats-menu {
+  top: calc(100% + 10px);
+  right: 0;
+  bottom: auto;
+}
+
+.hud-grid--active .source-info-panel {
+  position: fixed;
+  top: 94px;
+  right: 16px;
+  bottom: auto;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 116px));
+}
+
 @media (max-width: 760px) {
+  :root {
+    --dock-bottom: 0px;
+    --dock-x: 0px;
+    --mobile-detail-map-reveal: clamp(72px, 13vh, 118px);
+  }
+
+  .map-view-prompt,
+  .account-bar,
+  .activity-dock,
+  .recommendation-dashboard,
+  .recommendation-groups,
+  .recommendation-groups.is-detail-view,
+  .node-detail-panel,
+  .node-detail-panel .activity-detail,
+  .source-info-panel,
+  .account-stats-menu {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .map-view-prompt::before,
+  .map-view-prompt::after,
+  .account-bar::before,
+  .account-bar::after,
+  .activity-dock::before,
+  .activity-dock::after,
+  .recommendation-dashboard::before,
+  .recommendation-dashboard::after,
+  .activity-detail::before,
+  .activity-detail::after {
+    border-radius: 0;
+  }
+
   .source-info-control {
     flex: 0 0 46px;
   }
 
   .source-info-panel {
     position: fixed;
-    right: 12px;
-    bottom: calc(var(--dock-bottom) + 68px);
-    width: calc(100vw - 24px);
-    max-height: min(560px, calc(100vh - var(--dock-bottom) - 94px));
+    right: 0;
+    left: 0;
+    top: 96px;
+    bottom: auto;
+    width: auto;
+    max-height: min(560px, calc(100vh - 96px));
+  }
+
+  .hud-grid--active .activity-dock,
+  .hud-grid--active .recommendation-dashboard {
+    position: fixed;
+    right: 0;
+    bottom: var(--dock-bottom);
+    left: 0;
+    width: auto;
+    max-height: 190px;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .hud-grid--active:not(.has-selection) .activity-dock:not(.is-closed),
+  .hud-grid--active:not(.has-selection) .recommendation-dashboard:not(.is-closed) {
+    height: min(320px, 38vh);
+    max-height: min(320px, calc(100vh - 120px));
+  }
+
+  .hud-grid--active:not(.has-selection) .recommendation-groups {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .hud-grid--active:not(.has-selection) .recommendation-list,
+  .hud-grid--active:not(.has-selection) .recommendation-groups:not(.is-detail-view) .recommendation-list {
+    grid-auto-flow: row;
+    grid-auto-columns: unset;
+    grid-auto-rows: minmax(68px, auto);
+    min-height: 0;
+    max-height: 100%;
+    width: 100%;
+    margin-inline: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .hud-grid--active.has-selection .activity-dock,
+  .hud-grid--active.has-selection .recommendation-dashboard {
+    top: calc(96px + var(--mobile-detail-map-reveal));
+    bottom: 0;
+    height: calc(100vh - 96px - var(--mobile-detail-map-reveal));
+    max-height: none;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .hud-grid--active.has-selection .recommendation-groups.is-detail-view {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .hud-grid--active.has-selection .recommendation-groups.is-detail-view .activity-detail {
+    max-height: none;
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: auto;
   }
 
   .hud-grid--active .account-bar {
+    top: env(safe-area-inset-top);
+    right: 0;
+    left: 0;
     grid-template-columns: minmax(0, 1fr);
     row-gap: 10px;
-    width: min(420px, calc(100vw - 24px));
-    padding: 12px 12px 12px 74px;
+    width: auto;
+    min-height: 96px;
+    padding: 12px 14px;
   }
 
   .hud-grid--active .account-main strong {

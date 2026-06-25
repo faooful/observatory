@@ -563,11 +563,24 @@ function QuestDetail({ activity }: { activity: Activity }) {
 
 export function ActivityDetailCard({ activity, onClose }: { activity: Activity; onClose?: () => void }) {
   const icon = activity.icon ?? FALLBACK_ICONS[activity.type];
+  const fallbackIcon = FALLBACK_ICONS[activity.type];
 
   return (
     <div className="activity-detail">
       <div className="detail-title-row">
-        {icon ? <img alt="" aria-hidden="true" className="detail-activity-icon" src={icon} /> : null}
+        {icon ? (
+          <img
+            alt=""
+            aria-hidden="true"
+            className="detail-activity-icon"
+            src={icon}
+            onError={(event) => {
+              if (fallbackIcon && event.currentTarget.src !== fallbackIcon) {
+                event.currentTarget.src = fallbackIcon;
+              }
+            }}
+          />
+        ) : null}
         <div>
           <h2>{activity.title}</h2>
           <p>{activity.locationName}</p>
