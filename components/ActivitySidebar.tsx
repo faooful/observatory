@@ -5,6 +5,7 @@ import { ActivityDetailCard } from "@/components/ActivityDetailCard";
 import { getActivities, getTabActivities } from "@/lib/activities/activityModel";
 import type { Activity, ActivityType } from "@/lib/activities/types";
 import { SKILL_ORDER, type PlayerLookup } from "@/lib/osrs/player";
+import { OSRS_SOURCES } from "@/lib/osrs/sources";
 import { publicPath } from "@/lib/publicPath";
 import { useMapStore } from "@/lib/store/useMapStore";
 
@@ -37,6 +38,40 @@ const ACCOUNT_STAT_ICON_OVERRIDES: Record<string, string> = {
 
 const ACTIVITY_TABS: ActivityType[] = ["quest", "boss"];
 const SELECTABLE_ACTIVITY_TYPES = new Set<ActivityType>(ACTIVITY_TABS);
+const DATA_CREDITS = [
+  {
+    label: "Jagex / Old School RuneScape",
+    url: "https://oldschool.runescape.com/",
+    role: "Game world, names, icons, and underlying OSRS material"
+  },
+  {
+    label: "OpenRS2 Archive",
+    url: "https://archive.openrs2.org/",
+    role: "Preserved cache snapshot and XTEA-key archive"
+  },
+  {
+    label: "rs-map-viewer",
+    url: "https://github.com/dennisdev/rs-map-viewer",
+    role: "Reference tooling for exporting and exploring RuneScape map data"
+  },
+  {
+    label: "Cloudflare R2",
+    url: "https://developers.cloudflare.com/r2/",
+    role: "Hosted generated close-up map chunks"
+  }
+];
+const DATA_SOURCE_LINKS = [
+  OSRS_SOURCES.hiscores,
+  OSRS_SOURCES.wikisync,
+  OSRS_SOURCES.osrsWiki,
+  OSRS_SOURCES.wiseOldMan,
+  OSRS_SOURCES.templeOsrs,
+  OSRS_SOURCES.collectionLogNet,
+  OSRS_SOURCES.runeProfile,
+  OSRS_SOURCES.explv,
+  OSRS_SOURCES.osrsMapTiles,
+  OSRS_SOURCES.daxWalker
+];
 
 function getUniqueSortedValues(values: Array<string | undefined>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))].sort((left, right) => left.localeCompare(right));
@@ -121,6 +156,79 @@ function ActivityTabList({ activities }: { activities: Activity[] }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function SourceInfoControl() {
+  const [open, setOpen] = useState(false);
+  const sourcePanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && sourcePanelRef.current?.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  return (
+    <div className="source-info-control" ref={sourcePanelRef}>
+      <button
+        aria-expanded={open}
+        aria-label="Show data credits and sources"
+        className="source-info-button"
+        onClick={() => setOpen((current) => !current)}
+        title="Data credits and sources"
+        type="button"
+      >
+        <span aria-hidden="true">i</span>
+      </button>
+      {open ? (
+        <div className="source-info-panel" role="dialog" aria-label="Data credits and sources">
+          <div className="source-info-header">
+            <div>
+              <span>Credits</span>
+              <strong>Data and sources</strong>
+            </div>
+            <button aria-label="Close data credits and sources" onClick={() => setOpen(false)} type="button">
+              x
+            </button>
+          </div>
+          <p>
+            The Observatory combines generated OSRS cache data with public and community account, wiki, and map sources.
+          </p>
+          <div className="source-info-list">
+            {[...DATA_CREDITS, ...DATA_SOURCE_LINKS].map((source) => (
+              <a href={source.url} key={source.url} rel="noreferrer" target="_blank">
+                <strong>{source.label}</strong>
+                <span>{source.role}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -437,6 +545,7 @@ export function ActivitySidebar() {
                 <span>View Map</span>
               </button>
             </form>
+            <SourceInfoControl />
           </div>
           {error ? <p className="notice is-error intro-error">{error}</p> : null}
         </section>
@@ -447,6 +556,7 @@ export function ActivitySidebar() {
               Enter OSRS name
             </button>
           </section>
+          <SourceInfoControl />
         </div>
       ) : (
         <div className={`hud-grid hud-grid--active${selectedActivity ? " has-selection" : ""}`}>
@@ -463,6 +573,7 @@ export function ActivitySidebar() {
               <button className="account-change-button" type="button" onClick={returnToLookup}>
                 Change
               </button>
+              <SourceInfoControl />
             </div>
             {statsOpen ? (
               <div className="account-stats-menu" role="dialog" aria-label={`${player.username} stats`}>
